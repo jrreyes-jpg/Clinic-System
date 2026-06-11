@@ -1,0 +1,777 @@
+:root {
+    --bg: #fbfaf3;
+    --panel: #ffffff;
+    --text: #111111;
+    --muted: #6f6f6f;
+    --line: #ebe4bf;
+    --primary: #e8c61b;
+    --primary-dark: #9d7c00;
+    --primary-soft: #fff8d7;
+    --accent: #111111;
+    --shadow: 0 24px 60px rgba(75, 64, 10, 0.14);
+    --radius: 8px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+    background:
+        radial-gradient(circle at 85% 20%, rgba(232, 198, 27, 0.22), transparent 34%),
+        linear-gradient(135deg, #ffffff 0%, #fffdf0 56%, #fff8cf 100%),
+        var(--bg);
+}
+
+.login-intro-active {
+    overflow: hidden;
+}
+
+.intro-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 22px;
+    background:
+        radial-gradient(circle at center, rgba(232, 198, 27, 0.28), transparent 34%),
+        linear-gradient(135deg, #ffffff, #fff6c5);
+    transition: opacity 500ms ease, visibility 500ms ease;
+}
+
+.intro-logo {
+    display: grid;
+    width: 132px;
+    height: 132px;
+    place-items: center;
+    border-radius: 50%;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 34% 28%, #fff2a0 0 12%, transparent 13%),
+        linear-gradient(145deg, #ffe374, #e7bd00 68%, #c99a00);
+    box-shadow: 0 24px 60px rgba(157, 124, 0, 0.32);
+    animation: logoReveal 900ms cubic-bezier(.2, .8, .2, 1) both, logoPulse 1100ms ease-in-out 900ms infinite alternate;
+}
+
+.intro-logo span {
+    font-size: 2.3rem;
+    font-weight: 900;
+}
+
+.intro-text {
+    display: grid;
+    gap: 6px;
+    text-align: center;
+    animation: introText 700ms ease 420ms both;
+}
+
+.intro-text strong {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+
+.intro-text span {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.intro-complete .intro-screen {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+.login-page {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 24px;
+}
+
+.dental-login {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
+    gap: 0;
+    width: min(100%, 1040px);
+    margin: 0 auto;
+    perspective: 1600px;
+    filter: drop-shadow(0 28px 60px rgba(75, 64, 10, 0.18));
+}
+
+.login-card {
+    position: relative;
+    width: 100%;
+    min-height: 560px;
+    padding: 44px 36px;
+    border: 1px solid var(--line);
+    border-left: 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    background:
+        linear-gradient(90deg, rgba(157, 124, 0, 0.1), transparent 18%),
+        rgba(255, 255, 255, 0.99);
+    box-shadow: none;
+    transform-origin: left center;
+    animation: pageSettle 900ms ease 1500ms both;
+}
+
+.clinic-showcase {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    text-align: center;
+    min-height: 560px;
+    padding: 54px 44px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-right: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    background:
+        radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.42), transparent 19%),
+        radial-gradient(circle at 52% 28%, rgba(232, 198, 27, 0.36), transparent 34%),
+        linear-gradient(145deg, #fff8d1 0%, #e8c61b 48%, #cfa600 100%);
+    box-shadow: none;
+}
+
+.clinic-showcase::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 26px;
+    border-left: 1px solid rgba(122, 92, 0, 0.22);
+    background: linear-gradient(90deg, rgba(88, 65, 0, 0.2), rgba(255, 255, 255, 0.32), rgba(88, 65, 0, 0.1));
+}
+
+.clinic-showcase > * {
+    position: relative;
+    z-index: 1;
+}
+
+.clinic-logo {
+    display: grid;
+    width: 124px;
+    height: 124px;
+    margin: 0 auto 22px;
+    place-items: center;
+    border-radius: 50%;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 34% 28%, #fff7c4 0 12%, transparent 13%),
+        linear-gradient(145deg, #111111, #3a3200);
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 18px 34px rgba(75, 64, 10, 0.3);
+}
+
+.clinic-logo span {
+    font-size: 2.1rem;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.clinic-copy {
+    max-width: 480px;
+    margin: 14px auto 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1.65;
+}
+
+.service-list {
+    display: grid;
+    gap: 10px;
+    max-width: 360px;
+    margin: 28px 0;
+    padding: 0;
+    list-style: none;
+    font-size: 1.02rem;
+    font-weight: 700;
+}
+
+.service-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.service-list li::before {
+    content: "✓";
+    display: inline-grid;
+    width: 25px;
+    height: 25px;
+    place-items: center;
+    flex: 0 0 25px;
+    border-radius: 50%;
+    color: #111111;
+    background: var(--primary);
+    font-weight: 900;
+}
+
+.contact-strip {
+    display: inline-grid;
+    gap: 4px;
+    width: fit-content;
+    padding: 13px 18px;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid var(--line);
+}
+
+.contact-strip span {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.contact-strip strong {
+    font-size: 1.32rem;
+}
+
+.brand-system-card {
+    display: grid;
+    gap: 5px;
+    width: min(100%, 360px);
+    margin-top: 30px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 12px 34px rgba(75, 64, 10, 0.1);
+}
+
+.brand-system-card span {
+    color: var(--muted);
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.brand-system-card strong {
+    font-size: 1.1rem;
+}
+
+.brand-mark {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 0;
+    place-items: center;
+    border-radius: 50%;
+    color: #ffffff;
+    background: linear-gradient(145deg, #ffe374, #d7a900);
+    box-shadow: 0 12px 28px rgba(157, 124, 0, 0.24);
+}
+
+.brand-mark span {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.login-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    justify-content: center;
+    text-align: left;
+}
+
+.login-heading {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: var(--primary-dark);
+    font-size: 0.77rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0;
+    font-size: clamp(1.9rem, 4vw, 2.7rem);
+    line-height: 1.12;
+}
+
+.clinic-showcase h1 {
+    max-width: 500px;
+    color: #111111;
+    font-size: clamp(2.7rem, 5.4vw, 4.45rem);
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.26);
+}
+
+h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    line-height: 1.2;
+}
+
+.login-heading p:last-child,
+.muted {
+    margin: 10px 0 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.alert {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid rgba(232, 79, 95, 0.35);
+    border-radius: var(--radius);
+    color: #8f1f2d;
+    background: #fff0f2;
+}
+
+.alert-success {
+    border-color: rgba(19, 138, 138, 0.32);
+    color: var(--primary-dark);
+    background: #edf9f7;
+}
+
+.login-form {
+    display: grid;
+    gap: 18px;
+}
+
+.form-group {
+    display: grid;
+    gap: 8px;
+}
+
+label {
+    font-weight: 700;
+}
+
+input,
+select {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0 14px;
+    color: var(--text);
+    background: #fbfefd;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(232, 198, 27, 0.2);
+}
+
+.password-control {
+    position: relative;
+}
+
+.password-control input {
+    padding-right: 78px;
+}
+
+.toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    min-width: 58px;
+    min-height: 34px;
+    border: 0;
+    border-radius: 6px;
+    color: #111111;
+    background: var(--primary-soft);
+    cursor: pointer;
+}
+
+.toggle-password:hover {
+    background: #ffef91;
+}
+
+.field-error {
+    min-height: 18px;
+    color: #9d2332;
+    font-size: 0.86rem;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    border: 0;
+    border-radius: var(--radius);
+    padding: 0 20px;
+    color: #111111;
+    background: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 160ms ease, transform 160ms ease;
+}
+
+.button:hover {
+    background: #f5d739;
+    transform: translateY(-1px);
+}
+
+.login-form .button {
+    width: 100%;
+}
+
+.button-secondary {
+    width: fit-content;
+    color: #ffffff;
+    background: #111111;
+}
+
+.button-secondary:hover {
+    background: #18313a;
+}
+
+.button-light {
+    border: 1px solid var(--line);
+    color: #111111;
+    background: #ffffff;
+}
+
+.button-light:hover {
+    background: var(--primary-soft);
+}
+
+.form-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -8px;
+}
+
+.form-actions-row a {
+    color: var(--primary-dark);
+    font-size: 0.94rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.form-actions-row a:hover {
+    text-decoration: underline;
+}
+
+.dashboard-page {
+    background:
+        radial-gradient(circle at 80% 0%, rgba(232, 198, 27, 0.24), transparent 32%),
+        linear-gradient(135deg, #ffffff, #fffbed),
+        #fbfaf3;
+}
+
+.dashboard-shell {
+    width: min(100%, 1000px);
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.dashboard-shell-wide {
+    width: min(100%, 1180px);
+}
+
+.dashboard-panel {
+    display: grid;
+    gap: 28px;
+    padding: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+}
+
+.dashboard-panel h1 {
+    font-size: clamp(1.8rem, 3vw, 2.55rem);
+}
+
+.clinic-cover {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 22px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+        radial-gradient(circle at 88% 32%, rgba(232, 198, 27, 0.38), transparent 24%),
+        linear-gradient(90deg, #ffffff, #fff8d9);
+    box-shadow: var(--shadow);
+}
+
+.clinic-cover .clinic-logo {
+    width: 92px;
+    height: 92px;
+    margin: 0;
+}
+
+.clinic-cover h1 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+@keyframes logoReveal {
+    from {
+        opacity: 0;
+        transform: scale(0.72) rotate(-12deg);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+    }
+}
+
+@keyframes logoPulse {
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.045);
+    }
+}
+
+@keyframes introText {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.dashboard-actions,
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    display: grid;
+    gap: 8px;
+    min-height: 110px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #ffffff, #fffdf2);
+}
+
+.stat-card span {
+    color: var(--muted);
+}
+
+.stat-card strong {
+    font-size: 1.35rem;
+}
+
+.admin-form {
+    display: grid;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fffef8;
+}
+
+.compact-create {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fffef8;
+}
+
+.compact-create summary {
+    min-height: 52px;
+    padding: 15px 18px;
+    color: var(--primary-dark);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.compact-create .admin-form {
+    border-width: 1px 0 0;
+    border-radius: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+.compact-table {
+    min-width: 880px;
+}
+
+th,
+td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+}
+
+th {
+    color: var(--primary-dark);
+    font-size: 0.84rem;
+    text-transform: uppercase;
+}
+
+.inline-form {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) auto;
+    gap: 10px;
+}
+
+.user-list-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.list-toolbar h2,
+.list-toolbar .muted {
+    margin: 0;
+}
+
+.table-search {
+    width: min(100%, 280px);
+}
+
+.row-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.app-dialog {
+    width: min(92vw, 680px);
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+}
+
+.app-dialog::backdrop {
+    background: rgba(24, 49, 58, 0.38);
+}
+
+.dialog-form {
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--panel);
+}
+
+.dialog-header,
+.dialog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.dialog-actions {
+    justify-content: flex-end;
+}
+
+.icon-button {
+    display: inline-grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--primary-dark);
+    background: var(--primary-soft);
+    cursor: pointer;
+}
+
+.button-small {
+    min-height: 42px;
+    padding: 0 14px;
+}
+
+@media (max-width: 560px) {
+    .login-page {
+        padding: 16px;
+    }
+
+    .dental-login {
+        grid-template-columns: 1fr;
+    }
+
+    .clinic-showcase {
+        min-height: auto;
+        padding: 28px;
+    }
+
+    .clinic-showcase::after {
+        display: none;
+    }
+
+    .clinic-logo {
+        width: 92px;
+        height: 92px;
+    }
+
+    .clinic-showcase h1 {
+        font-size: 2.45rem;
+    }
+
+    .service-list {
+        margin: 20px 0;
+    }
+
+    .clinic-cover {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .login-card,
+    .dashboard-panel {
+        padding: 24px;
+    }
+
+    .dashboard-grid,
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
