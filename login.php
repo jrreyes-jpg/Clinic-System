@@ -24,7 +24,7 @@ $csrfToken = generateCsrfToken();
 <body class="brand-page login-intro-active">
     <div class="intro-screen" aria-hidden="true">
         <div class="intro-logo">
-            <span>AC</span>
+            <img src="assets/img/ac-ave-logo.jpg" alt="">
         </div>
         <div class="intro-text">
             <strong>AC Ave. Dental Clinic</strong>
@@ -32,24 +32,22 @@ $csrfToken = generateCsrfToken();
         </div>
     </div>
 
-    <main class="login-page dental-login">
-        <section class="clinic-showcase" aria-label="AC Ave. Dental Clinic system welcome">
-            <div class="clinic-logo" aria-hidden="true">
-                <span>AC</span>
+    <main class="login-page portal-login">
+        <section class="portal-brand-panel" aria-label="AC Ave. Dental Clinic system welcome">
+            <div class="portal-pattern" aria-hidden="true"></div>
+            <div class="clinic-logo portal-logo" aria-hidden="true">
+                <img src="assets/img/ac-ave-logo.jpg" alt="">
             </div>
-            <div class="clinic-showcase-copy">
-                <p class="eyebrow">AC Ave. Dental Clinic</p>
-                <h1>Clinic Management System</h1>
-            </div>
+            <p class="eyebrow">AC Ave. Dental Clinic</p>
+            <h1>Clinic Management System</h1>
         </section>
 
-        <section class="login-card" aria-labelledby="login-title">
+        <section class="login-card glass-login-card" aria-labelledby="login-title">
             <div class="login-brand-row">
                 <div class="brand-mark dental-mark" aria-hidden="true">
-                    <span>AC</span>
+                    <img src="assets/img/ac-ave-logo.jpg" alt="">
                 </div>
                 <div>
-                    <p class="eyebrow">Staff Portal</p>
                     <strong>AC Ave. Dental Clinic</strong>
                 </div>
             </div>
@@ -66,33 +64,33 @@ $csrfToken = generateCsrfToken();
             <form class="login-form" action="authenticate.php" method="POST" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
-                <div class="form-group">
-                    <label for="username">Username</label>
+                <div class="form-group floating-field">
                     <input
                         type="text"
                         id="username"
                         name="username"
                         autocomplete="username"
-                        placeholder="Enter your username"
+                        placeholder=" "
                         required
                     >
+                    <label for="username">Username</label>
                     <small class="field-error" data-error-for="username"></small>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
+                <div class="form-group floating-field">
                     <div class="password-control">
                         <input
                             type="password"
                             id="password"
                             name="password"
                             autocomplete="current-password"
-                            placeholder="Enter your password"
+                            placeholder=" "
                             required
                         >
                         <button type="button" class="toggle-password" aria-controls="password" aria-label="Show password">
-                            Show
+                            <span class="eye-icon" aria-hidden="true"></span>
                         </button>
+                        <label for="password">Password</label>
                     </div>
                     <small class="field-error" data-error-for="password"></small>
                 </div>
@@ -101,7 +99,10 @@ $csrfToken = generateCsrfToken();
                     <a href="forgot_password.php">Forgot password?</a>
                 </div>
 
-                <button class="button" type="submit">Login</button>
+                <button class="button login-submit" type="submit">
+                    <span class="button-text">Login</span>
+                    <span class="button-loader" aria-hidden="true"></span>
+                </button>
             </form>
         </section>
     </main>

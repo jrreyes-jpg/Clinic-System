@@ -23,7 +23,7 @@ if (togglePassword && passwordInput) {
         const isPassword = passwordInput.type === 'password';
 
         passwordInput.type = isPassword ? 'text' : 'password';
-        togglePassword.textContent = isPassword ? 'Hide' : 'Show';
+        togglePassword.classList.toggle('is-visible', isPassword);
         togglePassword.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
     });
 }
@@ -47,6 +47,14 @@ if (form) {
 
         if (hasError) {
             event.preventDefault();
+            return;
+        }
+
+        const submitButton = form.querySelector('.login-submit');
+
+        if (submitButton) {
+            submitButton.classList.add('is-loading');
+            submitButton.disabled = true;
         }
     });
 }
