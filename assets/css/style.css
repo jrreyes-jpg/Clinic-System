@@ -235,29 +235,6 @@ select {
     font-size: 1.32rem;
 }
 
-.brand-system-card {
-    display: grid;
-    gap: 5px;
-    width: min(100%, 360px);
-    margin-top: 30px;
-    padding: 18px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow: 0 12px 34px rgba(75, 64, 10, 0.1);
-}
-
-.brand-system-card span {
-    color: var(--muted);
-    font-size: 0.86rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.brand-system-card strong {
-    font-size: 1.1rem;
-}
-
 .brand-mark {
     display: grid;
     width: 54px;
@@ -551,6 +528,17 @@ input:focus {
     }
 }
 
+@keyframes pageSettle {
+    from {
+        opacity: 0;
+        transform: rotateY(-8deg) translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: rotateY(0) translateX(0);
+    }
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -736,15 +724,26 @@ th {
 
     .dental-login {
         grid-template-columns: 1fr;
+        gap: 16px;
+        filter: none;
     }
 
     .clinic-showcase {
         min-height: auto;
         padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
     }
 
     .clinic-showcase::after {
         display: none;
+    }
+
+    .login-card {
+        min-height: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.99);
     }
 
     .clinic-logo {
