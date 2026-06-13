@@ -101,4 +101,24 @@ if (!migrationColumnExists($pdo, 'patients', 'archived_at')) {
     echo "Added archived_at column to patients table." . PHP_EOL;
 }
 
+$pdo->exec(
+    "CREATE TABLE IF NOT EXISTS appointments (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        patient_id INT UNSIGNED NOT NULL,
+        appointment_date DATE NOT NULL,
+        appointment_time TIME NOT NULL,
+        service_type VARCHAR(120) NOT NULL,
+        status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+        notes TEXT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_appointments_date (appointment_date),
+        INDEX idx_appointments_status (status),
+        CONSTRAINT fk_appointments_patient
+            FOREIGN KEY (patient_id) REFERENCES patients(id)
+            ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+);
+
+echo "Appointments table is ready." . PHP_EOL;
+
 echo "Migration complete." . PHP_EOL;

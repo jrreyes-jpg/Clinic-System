@@ -45,3 +45,19 @@ CREATE TABLE IF NOT EXISTS patients (
     INDEX idx_patients_contact_number (contact_number),
     INDEX idx_patients_archived_at (archived_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS appointments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    service_type VARCHAR(120) NOT NULL,
+    status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
+    notes TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_appointments_date (appointment_date),
+    INDEX idx_appointments_status (status),
+    CONSTRAINT fk_appointments_patient
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

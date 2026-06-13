@@ -677,3 +677,203 @@ function validatePatientData(array $data): array
 
     return $errors;
 }
+
+function countActivePatients(): int
+{
+    if (!tableExists('patients')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+    $where = columnExists('patients', 'archived_at') ? 'WHERE archived_at IS NULL' : '';
+
+    return (int) $pdo->query("SELECT COUNT(*) FROM patients {$where}")->fetchColumn();
+}
+
+function countActiveUsers(): int
+{
+    if (!tableExists('users')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+
+    return (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+}
+
+function countAppointmentsToday(): int
+{
+    if (!tableExists('appointments')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+
+    if (columnExists('appointments', 'appointment_date')) {
+        return (int) $pdo->query('SELECT COUNT(*) FROM appointments WHERE appointment_date = CURDATE()')->fetchColumn();
+    }
+
+    if (columnExists('appointments', 'scheduled_at')) {
+        return (int) $pdo->query('SELECT COUNT(*) FROM appointments WHERE DATE(scheduled_at) = CURDATE()')->fetchColumn();
+    }
+
+    return 0;
+}
+
+function listAppointments(string $date = ''): array
+{
+    if (!tableExists('appointments')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $where = '';
+    $parameters = [];
+
+    if ($date !== '') {
+        $where = 'WHERE a.appointment_date = :appointment_date';
+        $parameters['appointment_date'] = $date;
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.service_type, a.status, a.notes, a.created_at,
+                p.patient_no, p.fullname AS patient_name, p.contact_number
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         {$where}
+         ORDER BY a.appointment_date ASC, a.appointment_time ASC"
+    );
+    $statement->execute($parameters);
+
+    return $statement->fetchAll();
+}
+
+function createAppointment(array $data): void
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'INSERT INTO appointments (patient_id, appointment_date, appointment_time, service_type, status, notes)
+         VALUES (:patient_id, :appointment_date, :appointment_time, :service_type, :status, :notes)'
+    );
+    $statement->execute([
+        'patient_id' => (int) $data['patient_id'],
+        'appointment_date' => $data['appointment_date'],
+        'appointment_time' => $data['appointment_time'],
+        'service_type' => $data['service_type'],
+        'status' => $data['status'],
+        'notes' => $data['notes'],
+    ]);
+}
+
+function updateAppointmentStatus(int $appointmentId, string $status): void
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'UPDATE appointments SET status = :status WHERE id = :id'
+    );
+    $statement->execute([
+        'status' => $status,
+        'id' => $appointmentId,
+    ]);
+}
+
+function validateAppointmentData(array $data): array
+{
+    $errors = [];
+
+    if ((int) ($data['patient_id'] ?? 0) <= 0) {
+        $errors[] = 'Please select a patient.';
+    }
+
+    if (trim((string) ($data['appointment_date'] ?? '')) === '') {
+        $errors[] = 'Appointment date is required.';
+    }
+
+    if (trim((string) ($data['appointment_time'] ?? '')) === '') {
+        $errors[] = 'Appointment time is required.';
+    }
+
+    if (trim((string) ($data['service_type'] ?? '')) === '') {
+        $errors[] = 'Service type is required.';
+    }
+
+    if (!in_array((string) ($data['status'] ?? ''), ['pending', 'confirmed', 'completed', 'cancelled'], true)) {
+        $errors[] = 'Please select a valid status.';
+    }
+
+    return $errors;
+}
+
+function recentDashboardActivities(int $limit = 5): array
+{
+    $activities = [];
+    $pdo = getDatabaseConnection();
+
+    if (tableExists('patients')) {
+        $where = columnExists('patients', 'archived_at') ? 'WHERE archived_at IS NULL' : '';
+        $statement = $pdo->query(
+            "SELECT fullname AS title, patient_no AS meta, created_at
+             FROM patients
+             {$where}
+             ORDER BY created_at DESC
+             LIMIT {$limit}"
+        );
+
+        foreach ($statement->fetchAll() as $row) {
+            $activities[] = [
+                'icon' => 'fa-user-injured',
+                'label' => 'Patient added',
+                'title' => $row['title'],
+                'meta' => $row['meta'],
+                'created_at' => $row['created_at'],
+            ];
+        }
+    }
+
+    if (tableExists('users')) {
+        $statement = $pdo->query(
+            "SELECT fullname AS title, role AS meta, created_at
+             FROM users
+             ORDER BY created_at DESC
+             LIMIT {$limit}"
+        );
+
+        foreach ($statement->fetchAll() as $row) {
+            $activities[] = [
+                'icon' => 'fa-user-shield',
+                'label' => 'User account created',
+                'title' => $row['title'],
+                'meta' => ucfirst((string) $row['meta']),
+                'created_at' => $row['created_at'],
+            ];
+        }
+    }
+
+    if (tableExists('appointments')) {
+        $statement = $pdo->query(
+            "SELECT p.fullname AS title, CONCAT(a.service_type, ' · ', a.status) AS meta, a.created_at
+             FROM appointments a
+             INNER JOIN patients p ON p.id = a.patient_id
+             ORDER BY a.created_at DESC
+             LIMIT {$limit}"
+        );
+
+        foreach ($statement->fetchAll() as $row) {
+            $activities[] = [
+                'icon' => 'fa-calendar-check',
+                'label' => 'Appointment scheduled',
+                'title' => $row['title'],
+                'meta' => $row['meta'],
+                'created_at' => $row['created_at'],
+            ];
+        }
+    }
+
+    usort($activities, static function (array $a, array $b): int {
+        return strcmp((string) $b['created_at'], (string) $a['created_at']);
+    });
+
+    return array_slice($activities, 0, $limit);
+}
