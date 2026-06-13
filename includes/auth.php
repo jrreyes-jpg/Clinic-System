@@ -31,6 +31,21 @@ function e(?string $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function clinicLogoUrl(string $prefix = ''): string
+{
+    $logoFiles = ['clinic-logo.jpg', 'clinic-logo.png', 'clinic-logo.webp', 'ac-ave-logo.jpg'];
+
+    foreach ($logoFiles as $file) {
+        $path = __DIR__ . '/../assets/img/' . $file;
+
+        if (is_file($path)) {
+            return $prefix . 'assets/img/' . $file . '?v=' . filemtime($path);
+        }
+    }
+
+    return $prefix . 'assets/img/ac-ave-logo.jpg';
+}
+
 function isLoggedIn(): bool
 {
     startSecureSession();

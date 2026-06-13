@@ -65,7 +65,8 @@ body {
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border-radius: inherit;
 }
 
@@ -751,6 +752,34 @@ th {
     line-height: 1.7;
 }
 
+.settings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.logo-settings-form {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.logo-preview {
+    width: 76px;
+    height: 76px;
+    overflow: hidden;
+    border: 1px solid rgba(169, 148, 0, 0.24);
+    border-radius: 18px;
+    background: #e7dc35;
+}
+
+.logo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+}
+
 @media (max-width: 560px) {
     .login-page {
         padding: 16px;
@@ -806,7 +835,9 @@ th {
     .dashboard-grid,
     .form-grid,
     .profile-grid,
-    .search-bar {
+    .search-bar,
+    .settings-grid,
+    .logo-settings-form {
         grid-template-columns: 1fr;
     }
 }
@@ -1179,8 +1210,13 @@ th {
     gap: 24px;
     height: 100vh;
     padding: 24px;
-    color: #ffffff;
-    background: linear-gradient(180deg, #171717, #2b2500);
+    color: #111111;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.72), transparent 28%),
+        linear-gradient(180deg, #fff6a8 0%, #ead93a 44%, #fdf9cf 100%);
+    border-right: 1px solid rgba(169, 148, 0, 0.24);
+    box-shadow: 18px 0 50px rgba(94, 86, 18, 0.12);
+    transition: width 200ms ease, padding 200ms ease;
 }
 
 .fixed-sidebar {
@@ -1196,14 +1232,16 @@ th {
     align-items: center;
     gap: 12px;
     padding-bottom: 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(169, 148, 0, 0.22);
 }
 
 .sidebar-brand img {
     width: 50px;
     height: 50px;
     border-radius: 14px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
+    background: #e7dc35;
 }
 
 .sidebar-brand strong,
@@ -1212,8 +1250,26 @@ th {
 }
 
 .sidebar-brand span {
-    color: rgba(255, 255, 255, 0.68);
+    color: #6f6200;
     font-size: 0.9rem;
+}
+
+.sidebar-toggle {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid rgba(169, 148, 0, 0.24);
+    border-radius: 12px;
+    color: #111111;
+    background: rgba(255, 255, 255, 0.62);
+    cursor: pointer;
+    transition: background 180ms ease, transform 180ms ease;
+}
+
+.sidebar-toggle:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
 }
 
 .sidebar-nav {
@@ -1230,7 +1286,7 @@ th {
     min-height: 46px;
     padding: 0 14px;
     border-radius: 14px;
-    color: rgba(255, 255, 255, 0.78);
+    color: #3d3700;
     border: 0;
     text-decoration: none;
     text-align: left;
@@ -1245,7 +1301,8 @@ th {
 .sidebar-nav button.active,
 .sidebar-logout:hover {
     color: #111111;
-    background: linear-gradient(135deg, #fff37b, #e7dc35);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 12px 28px rgba(94, 86, 18, 0.1);
     transform: translateX(3px);
 }
 
@@ -1257,8 +1314,8 @@ th {
 
 .sidebar-logout {
     margin-top: auto;
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.08);
+    color: #111111;
+    background: rgba(255, 255, 255, 0.52);
 }
 
 .admin-main {
@@ -1271,6 +1328,34 @@ th {
 .spa-main {
     min-height: 100vh;
     margin-left: 280px;
+    transition: margin-left 200ms ease;
+}
+
+.sidebar-collapsed .fixed-sidebar {
+    width: 92px;
+    padding: 20px 16px;
+}
+
+.sidebar-collapsed .spa-main {
+    margin-left: 92px;
+}
+
+.sidebar-collapsed .sidebar-brand div,
+.sidebar-collapsed .sidebar-nav span,
+.sidebar-collapsed .sidebar-logout span {
+    display: none;
+}
+
+.sidebar-collapsed .sidebar-brand img {
+    width: 48px;
+    height: 48px;
+}
+
+.sidebar-collapsed .sidebar-nav a,
+.sidebar-collapsed .sidebar-nav button,
+.sidebar-collapsed .sidebar-logout {
+    justify-content: center;
+    padding: 0;
 }
 
 .spa-content {
@@ -1309,6 +1394,17 @@ th {
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.82);
     box-shadow: 0 18px 42px rgba(94, 86, 18, 0.08);
+}
+
+.topbar-title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.topbar-title-row .sidebar-toggle {
+    flex: 0 0 38px;
 }
 
 .admin-topbar h1 {

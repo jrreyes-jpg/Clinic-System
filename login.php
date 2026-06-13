@@ -24,7 +24,7 @@ $csrfToken = generateCsrfToken();
 <body class="brand-page login-intro-active">
     <div class="intro-screen" aria-hidden="true">
         <div class="intro-logo">
-            <img src="assets/img/ac-ave-logo.jpg" alt="">
+            <img src="<?= e(clinicLogoUrl()) ?>" alt="">
         </div>
         <div class="intro-text">
             <strong>AC Ave. Dental Clinic</strong>
@@ -36,7 +36,7 @@ $csrfToken = generateCsrfToken();
         <section class="portal-brand-panel" aria-label="AC Ave. Dental Clinic system welcome">
             <div class="portal-pattern" aria-hidden="true"></div>
             <div class="clinic-logo portal-logo" aria-hidden="true">
-                <img src="assets/img/ac-ave-logo.jpg" alt="">
+                <img src="<?= e(clinicLogoUrl()) ?>" alt="">
             </div>
             <p class="eyebrow">AC Ave. Dental Clinic</p>
             <h1>Clinic Management System</h1>
@@ -45,7 +45,7 @@ $csrfToken = generateCsrfToken();
         <section class="login-card glass-login-card" aria-labelledby="login-title">
             <div class="login-brand-row">
                 <div class="brand-mark dental-mark" aria-hidden="true">
-                    <img src="assets/img/ac-ave-logo.jpg" alt="">
+                    <img src="<?= e(clinicLogoUrl()) ?>" alt="">
                 </div>
                 <div>
                     <strong>AC Ave. Dental Clinic</strong>

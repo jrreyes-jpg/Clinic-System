@@ -6,9 +6,9 @@ require_once __DIR__ . '/../includes/auth.php';
 requireRole('admin');
 header('Content-Type: application/json');
 
-function jsonResponse(bool $ok, string $message): never
+function jsonResponse(bool $ok, string $message, array $extra = []): never
 {
-    echo json_encode(['ok' => $ok, 'message' => $message]);
+    echo json_encode(array_merge(['ok' => $ok, 'message' => $message], $extra));
     exit;
 }
 
@@ -98,6 +98,44 @@ try {
 
         createUser($fullname, $username, $email, $password, 'receptionist', $mobile);
         jsonResponse(true, 'Receptionist account created successfully.');
+    }
+
+    if ($action === 'update_logo') {
+        if (!isset($_FILES['clinic_logo']) || $_FILES['clinic_logo']['error'] !== UPLOAD_ERR_OK) {
+            jsonResponse(false, 'Please choose a valid logo image.');
+        }
+
+        $tmpPath = (string) $_FILES['clinic_logo']['tmp_name'];
+        $imageInfo = getimagesize($tmpPath);
+        $allowedTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if ($imageInfo === false || !isset($allowedTypes[$imageInfo['mime']])) {
+            jsonResponse(false, 'Logo must be a JPG, PNG, or WEBP image.');
+        }
+
+        $targetDir = __DIR__ . '/../assets/img';
+
+        foreach (['jpg', 'png', 'webp'] as $extension) {
+            $oldPath = $targetDir . '/clinic-logo.' . $extension;
+            if (is_file($oldPath)) {
+                unlink($oldPath);
+            }
+        }
+
+        $extension = $allowedTypes[$imageInfo['mime']];
+        $targetPath = $targetDir . '/clinic-logo.' . $extension;
+
+        if (!move_uploaded_file($tmpPath, $targetPath)) {
+            jsonResponse(false, 'Logo upload failed. Please try again.');
+        }
+
+        jsonResponse(true, 'Clinic logo updated successfully.', [
+            'logoUrl' => clinicLogoUrl('../'),
+        ]);
     }
 } catch (PDOException $exception) {
     jsonResponse(false, 'Database action failed. Please check duplicate records or required data.');

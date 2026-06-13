@@ -2,6 +2,7 @@ const content = document.querySelector('#dashboardContent');
 const title = document.querySelector('#sectionTitle');
 const subtitle = document.querySelector('#sectionSubtitle');
 const nav = document.querySelector('[data-dashboard-nav]');
+const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
 
 let activeSection = window.dashboardConfig?.defaultSection || 'dashboard';
 
@@ -145,9 +146,19 @@ content.addEventListener('submit', async (event) => {
     }
 
     if (result.ok) {
+        if (result.logoUrl) {
+            document.querySelectorAll('[data-clinic-logo], [data-clinic-logo-preview]').forEach((image) => {
+                image.src = result.logoUrl;
+            });
+        }
+
         ajaxForm.reset();
         loadSection(activeSection);
     }
 });
 
 loadSection(activeSection);
+
+sidebarToggle?.addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-collapsed');
+});

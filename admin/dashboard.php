@@ -28,7 +28,7 @@ $csrfToken = generateCsrfToken();
     <div class="admin-layout spa-layout">
         <aside class="admin-sidebar fixed-sidebar" aria-label="Admin navigation">
             <div class="sidebar-brand">
-                <img src="../assets/img/ac-ave-logo.jpg" alt="AC Ave. Dental Clinic">
+                <img src="<?= e(clinicLogoUrl('../')) ?>" alt="AC Ave. Dental Clinic" data-clinic-logo>
                 <div>
                     <strong>AC Ave.</strong>
                     <span>Dental Clinic</span>
@@ -70,10 +70,15 @@ $csrfToken = generateCsrfToken();
 
         <main class="admin-main spa-main">
             <header class="admin-topbar">
-                <div>
-                    <p class="eyebrow">AC Ave. Dental Clinic</p>
-                    <h1 id="sectionTitle">Dashboard</h1>
-                    <p class="muted" id="sectionSubtitle">Loading clinic overview...</p>
+                <div class="topbar-title-row">
+                <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" data-sidebar-toggle>
+                        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+                    </button>
+                    <div>
+                        <p class="eyebrow">AC Ave. Dental Clinic</p>
+                        <h1 id="sectionTitle">Dashboard</h1>
+                        <p class="muted" id="sectionSubtitle">Loading clinic overview...</p>
+                    </div>
                 </div>
 
                 <section class="admin-profile" aria-label="Admin profile">

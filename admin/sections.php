@@ -167,5 +167,22 @@ sectionHeader('Settings', 'System preferences and account information.');
 ?>
 <section class="dashboard-card">
     <div class="card-header"><div><h2>Settings</h2><p class="muted">More configurable clinic preferences can be added here.</p></div><i class="fa-solid fa-gear"></i></div>
-    <div class="detail-panel"><span>Clinic</span><p>AC Ave. Dental Clinic</p></div>
+    <div class="settings-grid">
+        <div class="detail-panel">
+            <span>Clinic</span>
+            <p>AC Ave. Dental Clinic</p>
+        </div>
+
+        <form class="admin-form ajax-form logo-settings-form" data-action="update_logo" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+            <div class="logo-preview">
+                <img src="<?= e(clinicLogoUrl('../')) ?>" alt="Current clinic logo" data-clinic-logo-preview>
+            </div>
+            <div class="form-group">
+                <label for="clinic_logo">Clinic Logo</label>
+                <input type="file" id="clinic_logo" name="clinic_logo" accept="image/jpeg,image/png,image/webp" required>
+            </div>
+            <button class="button" type="submit">Update Logo</button>
+        </form>
+    </div>
 </section>

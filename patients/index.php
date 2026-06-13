@@ -23,7 +23,7 @@ $success = getFlashSuccess();
     <main class="dashboard-shell dashboard-shell-wide">
         <section class="clinic-cover">
             <div class="clinic-logo" aria-hidden="true">
-                <img src="../assets/img/ac-ave-logo.jpg" alt="">
+                <img src="<?= e(clinicLogoUrl('../')) ?>" alt="">
             </div>
             <div>
                 <p class="eyebrow">AC Ave. Dental Clinic</p>
