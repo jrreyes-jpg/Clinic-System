@@ -493,3 +493,187 @@ function verifyCsrfToken(?string $token): bool
         && isset($_SESSION['csrf_token'])
         && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+function requireAnyRole(array $allowedRoles): void
+{
+    requireLogin();
+
+    if (!in_array((string) ($_SESSION['role'] ?? ''), $allowedRoles, true)) {
+        redirectByRole((string) $_SESSION['role'], '../');
+    }
+}
+
+function patientBasePath(): string
+{
+    return '../patients/index.php';
+}
+
+function generatePatientNumber(): string
+{
+    $pdo = getDatabaseConnection();
+    $year = date('Y');
+
+    $statement = $pdo->prepare(
+        'SELECT patient_no FROM patients WHERE patient_no LIKE :prefix ORDER BY id DESC LIMIT 1'
+    );
+    $statement->execute(['prefix' => 'P-' . $year . '-%']);
+    $latest = $statement->fetchColumn();
+
+    if (!$latest) {
+        return 'P-' . $year . '-0001';
+    }
+
+    $number = (int) substr((string) $latest, -4);
+
+    return 'P-' . $year . '-' . str_pad((string) ($number + 1), 4, '0', STR_PAD_LEFT);
+}
+
+function calculateAgeFromBirthdate(string $birthdate): int
+{
+    if ($birthdate === '') {
+        return 0;
+    }
+
+    $birth = new DateTime($birthdate);
+    $today = new DateTime();
+
+    return $birth->diff($today)->y;
+}
+
+function listPatients(string $search = '', bool $includeArchived = false): array
+{
+    $pdo = getDatabaseConnection();
+    $conditions = [];
+    $parameters = [];
+
+    if (!$includeArchived && columnExists('patients', 'archived_at')) {
+        $conditions[] = 'archived_at IS NULL';
+    }
+
+    if ($search !== '') {
+        $conditions[] = '(patient_no LIKE :search OR fullname LIKE :search OR contact_number LIKE :search OR email LIKE :search)';
+        $parameters['search'] = '%' . $search . '%';
+    }
+
+    $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
+
+    $statement = $pdo->prepare(
+        "SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at,
+            " . (columnExists('patients', 'archived_at') ? 'archived_at' : 'NULL AS archived_at') . "
+         FROM patients
+         {$where}
+         ORDER BY created_at DESC, fullname ASC"
+    );
+    $statement->execute($parameters);
+
+    return $statement->fetchAll();
+}
+
+function findPatientById(int $patientId): ?array
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at,
+            ' . (columnExists('patients', 'archived_at') ? 'archived_at' : 'NULL AS archived_at') . '
+         FROM patients
+         WHERE id = :id
+         LIMIT 1'
+    );
+    $statement->execute(['id' => $patientId]);
+
+    $patient = $statement->fetch();
+
+    return $patient ?: null;
+}
+
+function createPatient(array $data): int
+{
+    $pdo = getDatabaseConnection();
+    $patientNo = generatePatientNumber();
+    $age = calculateAgeFromBirthdate((string) $data['birthdate']);
+
+    $statement = $pdo->prepare(
+        'INSERT INTO patients (patient_no, fullname, birthdate, age, gender, address, contact_number, email)
+         VALUES (:patient_no, :fullname, :birthdate, :age, :gender, :address, :contact_number, :email)'
+    );
+    $statement->execute([
+        'patient_no' => $patientNo,
+        'fullname' => $data['fullname'],
+        'birthdate' => $data['birthdate'],
+        'age' => $age,
+        'gender' => $data['gender'],
+        'address' => $data['address'],
+        'contact_number' => $data['contact_number'],
+        'email' => $data['email'],
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
+function updatePatient(int $patientId, array $data): void
+{
+    $pdo = getDatabaseConnection();
+    $age = calculateAgeFromBirthdate((string) $data['birthdate']);
+
+    $statement = $pdo->prepare(
+        'UPDATE patients
+         SET fullname = :fullname,
+             birthdate = :birthdate,
+             age = :age,
+             gender = :gender,
+             address = :address,
+             contact_number = :contact_number,
+             email = :email
+         WHERE id = :id'
+    );
+    $statement->execute([
+        'fullname' => $data['fullname'],
+        'birthdate' => $data['birthdate'],
+        'age' => $age,
+        'gender' => $data['gender'],
+        'address' => $data['address'],
+        'contact_number' => $data['contact_number'],
+        'email' => $data['email'],
+        'id' => $patientId,
+    ]);
+}
+
+function archivePatient(int $patientId): void
+{
+    $pdo = getDatabaseConnection();
+
+    if (columnExists('patients', 'archived_at')) {
+        $statement = $pdo->prepare('UPDATE patients SET archived_at = NOW() WHERE id = :id');
+        $statement->execute(['id' => $patientId]);
+    }
+}
+
+function validatePatientData(array $data): array
+{
+    $errors = [];
+
+    if (trim((string) ($data['fullname'] ?? '')) === '') {
+        $errors[] = 'Full name is required.';
+    }
+
+    if (trim((string) ($data['birthdate'] ?? '')) === '') {
+        $errors[] = 'Birthdate is required.';
+    }
+
+    if (!in_array((string) ($data['gender'] ?? ''), ['Male', 'Female', 'Other'], true)) {
+        $errors[] = 'Please select a valid gender.';
+    }
+
+    if (trim((string) ($data['contact_number'] ?? '')) === '') {
+        $errors[] = 'Contact number is required.';
+    }
+
+    $email = trim((string) ($data['email'] ?? ''));
+
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Please enter a valid email address.';
+    }
+
+    return $errors;
+}

@@ -46,6 +46,7 @@ $user = currentUser();
             </div>
 
             <div class="dashboard-actions">
+                <a class="button" href="../patients/index.php">Patients</a>
                 <a class="button" href="users.php">Manage Users</a>
                 <a class="button button-secondary" href="../logout.php">Logout</a>
             </div>

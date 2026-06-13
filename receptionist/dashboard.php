@@ -45,7 +45,10 @@ $user = currentUser();
                 </article>
             </div>
 
-            <a class="button button-secondary" href="../logout.php">Logout</a>
+            <div class="dashboard-actions">
+                <a class="button" href="../patients/index.php">Patients</a>
+                <a class="button button-secondary" href="../logout.php">Logout</a>
+            </div>
         </section>
     </main>
 </body>

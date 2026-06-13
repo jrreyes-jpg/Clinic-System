@@ -54,7 +54,6 @@ $csrfToken = generateCsrfToken();
 
             <div class="login-heading">
                 <h2 id="login-title">Welcome Back</h2>
-                <p>Sign in to continue to your clinic dashboard.</p>
             </div>
 
             <?php if ($error !== ''): ?>

@@ -74,4 +74,31 @@ if (!migrationColumnExists($pdo, 'password_reset_requests', 'expires_at')) {
     echo "Added expires_at column to password reset requests." . PHP_EOL;
 }
 
+$pdo->exec(
+    "CREATE TABLE IF NOT EXISTS patients (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        patient_no VARCHAR(30) NOT NULL UNIQUE,
+        fullname VARCHAR(150) NOT NULL,
+        birthdate DATE NOT NULL,
+        age INT UNSIGNED NOT NULL DEFAULT 0,
+        gender ENUM('Male', 'Female', 'Other') NOT NULL,
+        address TEXT NULL,
+        contact_number VARCHAR(30) NOT NULL,
+        email VARCHAR(150) NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        archived_at TIMESTAMP NULL DEFAULT NULL,
+        INDEX idx_patients_fullname (fullname),
+        INDEX idx_patients_contact_number (contact_number),
+        INDEX idx_patients_archived_at (archived_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+);
+
+echo "Patients table is ready." . PHP_EOL;
+
+if (!migrationColumnExists($pdo, 'patients', 'archived_at')) {
+    $pdo->exec('ALTER TABLE patients ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL AFTER created_at');
+    $pdo->exec('ALTER TABLE patients ADD INDEX idx_patients_archived_at (archived_at)');
+    echo "Added archived_at column to patients table." . PHP_EOL;
+}
+
 echo "Migration complete." . PHP_EOL;
