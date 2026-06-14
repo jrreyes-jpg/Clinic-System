@@ -265,6 +265,34 @@ if ($section === 'reports') {
     exit;
 }
 
+if ($section === 'records') {
+    $records = listDentalRecords();
+    sectionHeader('Dental Records', 'All dental record entries for your patients.');
+    ?>
+    <section class="dashboard-card">
+        <div class="card-header"><div><h2>Dental Records</h2><p class="muted"><?= count($records) ?> record<?= count($records) === 1 ? '' : 's' ?></p></div><i class="fa-solid fa-notes-medical"></i></div>
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead><tr><th>Date</th><th>Patient</th><th>Diagnosis</th><th>Treatment</th><th>Notes</th></tr></thead>
+                <tbody>
+                    <?php if ($records === []): ?><tr><td colspan="5">No dental records found.</td></tr><?php endif; ?>
+                    <?php foreach ($records as $record): ?>
+                        <tr>
+                            <td><?= e(date('M d, Y', strtotime($record['date_recorded']))) ?></td>
+                            <td><strong><?= e($record['patient_name']) ?></strong><br><span class="muted"><?= e($record['patient_no']) ?></span></td>
+                            <td><?= e($record['diagnosis']) ?></td>
+                            <td><?= e($record['treatment']) ?></td>
+                            <td><?= e($record['notes']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <?php
+    exit;
+}
+
 sectionHeader('Settings', 'System preferences and account information.');
 ?>
 <section class="dashboard-card">

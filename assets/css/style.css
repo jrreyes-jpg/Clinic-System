@@ -1248,6 +1248,14 @@ th {
     background: #e7dc35;
 }
 
+.sidebar-brand {
+    cursor: pointer;
+}
+
+.sidebar-brand:hover {
+    transform: translateX(1px);
+}
+
 .sidebar-brand strong,
 .sidebar-brand span {
     display: block;
@@ -1445,12 +1453,22 @@ th {
 .live-clock strong {
     color: #111111;
     font-size: 1rem;
+    animation: clockTick 1s steps(1, end) infinite;
 }
 
 .live-clock span {
     color: var(--muted);
     font-size: 0.78rem;
     font-weight: 700;
+}
+
+@keyframes clockTick {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1px);
+    }
 }
 
 .profile-menu-wrap {

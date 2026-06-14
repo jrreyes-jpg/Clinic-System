@@ -62,3 +62,18 @@ CREATE TABLE IF NOT EXISTS appointments (
         FOREIGN KEY (patient_id) REFERENCES patients(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS dental_records (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    diagnosis VARCHAR(255) NOT NULL,
+    treatment VARCHAR(255) NOT NULL,
+    notes TEXT NULL,
+    date_recorded DATE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_dental_records_patient_id (patient_id),
+    INDEX idx_dental_records_date_recorded (date_recorded),
+    CONSTRAINT fk_dental_records_patient
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

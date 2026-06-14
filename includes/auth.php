@@ -753,6 +753,105 @@ function validatePatientData(array $data): array
     return $errors;
 }
 
+function listDentalRecords(int $patientId = 0): array
+{
+    if (!tableExists('dental_records')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $where = '';
+    $parameters = [];
+
+    if ($patientId > 0) {
+        $where = 'WHERE dr.patient_id = :patient_id';
+        $parameters['patient_id'] = $patientId;
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT dr.id, dr.patient_id, dr.diagnosis, dr.treatment, dr.notes, dr.date_recorded, dr.created_at,
+                p.patient_no, p.fullname AS patient_name, p.contact_number
+         FROM dental_records dr
+         INNER JOIN patients p ON p.id = dr.patient_id
+         {$where}
+         ORDER BY dr.date_recorded DESC, dr.id DESC"
+    );
+    $statement->execute($parameters);
+
+    return $statement->fetchAll();
+}
+
+function createDentalRecord(array $data): void
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'INSERT INTO dental_records (patient_id, diagnosis, treatment, notes, date_recorded)
+         VALUES (:patient_id, :diagnosis, :treatment, :notes, :date_recorded)'
+    );
+    $statement->execute([
+        'patient_id' => (int) $data['patient_id'],
+        'diagnosis' => $data['diagnosis'],
+        'treatment' => $data['treatment'],
+        'notes' => $data['notes'],
+        'date_recorded' => $data['date_recorded'],
+    ]);
+}
+
+function validateDentalRecordData(array $data): array
+{
+    $errors = [];
+
+    if ((int) ($data['patient_id'] ?? 0) <= 0) {
+        $errors[] = 'Please select a patient.';
+    }
+
+    if (trim((string) ($data['diagnosis'] ?? '')) === '') {
+        $errors[] = 'Diagnosis is required.';
+    }
+
+    if (trim((string) ($data['treatment'] ?? '')) === '') {
+        $errors[] = 'Treatment is required.';
+    }
+
+    if (trim((string) ($data['date_recorded'] ?? '')) === '') {
+        $errors[] = 'Date recorded is required.';
+    }
+
+    return $errors;
+}
+
+function listPreviousVisits(int $patientId): array
+{
+    if (!tableExists('appointments') || $patientId <= 0) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $serviceColumn = appointmentServiceColumn();
+    $statement = $pdo->prepare(
+        "SELECT a.id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status, a.notes
+         FROM appointments a
+         WHERE a.patient_id = :patient_id
+             AND (a.status IN ('completed', 'cancelled') OR a.appointment_date < CURDATE())
+         ORDER BY a.appointment_date DESC, a.appointment_time DESC"
+    );
+    $statement->execute(['patient_id' => $patientId]);
+
+    return $statement->fetchAll();
+}
+
+function countDentalRecords(): int
+{
+    if (!tableExists('dental_records')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+
+    return (int) $pdo->query('SELECT COUNT(*) FROM dental_records')->fetchColumn();
+}
+
 function countActivePatients(): int
 {
     if (!tableExists('patients')) {
@@ -1014,6 +1113,26 @@ function recentDashboardActivities(int $limit = 5): array
             $activities[] = [
                 'icon' => 'fa-calendar-check',
                 'label' => 'Appointment scheduled',
+                'title' => $row['title'],
+                'meta' => $row['meta'],
+                'created_at' => $row['created_at'],
+            ];
+        }
+    }
+
+    if (tableExists('dental_records')) {
+        $statement = $pdo->query(
+            "SELECT p.fullname AS title, dr.treatment AS meta, dr.created_at
+             FROM dental_records dr
+             INNER JOIN patients p ON p.id = dr.patient_id
+             ORDER BY dr.created_at DESC
+             LIMIT {$limit}"
+        );
+
+        foreach ($statement->fetchAll() as $row) {
+            $activities[] = [
+                'icon' => 'fa-notes-medical',
+                'label' => 'Dental record added',
                 'title' => $row['title'],
                 'meta' => $row['meta'],
                 'created_at' => $row['created_at'],

@@ -29,13 +29,13 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
 <body class="admin-dashboard-body">
     <div class="admin-layout spa-layout">
         <aside class="admin-sidebar fixed-sidebar" aria-label="Admin navigation">
-            <div class="sidebar-brand">
+            <div class="sidebar-brand" data-dashboard-home>
                 <img src="<?= e(clinicLogoUrl('../')) ?>" alt="AC Ave. Dental Clinic" data-clinic-logo>
                 <div>
                     <strong>AC Ave.</strong>
                     <span>Dental Clinic</span>
                 </div>
-                <button class="sidebar-toggle sidebar-brand-toggle" type="button" aria-label="Expand sidebar" title="Expand sidebar" data-sidebar-toggle>
+                <button class="sidebar-toggle sidebar-brand-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" data-sidebar-toggle>
                     <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
                 </button>
             </div>
@@ -52,6 +52,10 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
                 <button type="button" data-section="appointments">
                     <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
                     <span>Appointments</span>
+                </button>
+                <button type="button" data-section="records">
+                    <i class="fa-solid fa-notes-medical" aria-hidden="true"></i>
+                    <span>Dental Records</span>
                 </button>
                 <button type="button" data-section="users">
                     <i class="fa-solid fa-user-gear" aria-hidden="true"></i>
@@ -76,9 +80,6 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
         <main class="admin-main spa-main">
             <header class="admin-topbar">
                 <div class="topbar-title-row">
-                    <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" data-sidebar-toggle>
-                        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
-                    </button>
                     <div>
                         <p class="eyebrow">AC Ave. Dental Clinic</p>
                         <h1 id="sectionTitle">Dashboard</h1>

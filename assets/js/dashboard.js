@@ -2,7 +2,8 @@ const content = document.querySelector('#dashboardContent');
 const title = document.querySelector('#sectionTitle');
 const subtitle = document.querySelector('#sectionSubtitle');
 const nav = document.querySelector('[data-dashboard-nav]');
-const sidebarToggles = document.querySelectorAll('[data-sidebar-toggle]');
+const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+const dashboardHome = document.querySelector('[data-dashboard-home]');
 const profileToggle = document.querySelector('[data-profile-toggle]');
 const profileDropdown = document.querySelector('[data-profile-dropdown]');
 const profileModal = document.querySelector('[data-profile-modal]');
@@ -38,6 +39,10 @@ async function loadSection(section, params = {}) {
 
     window.setTimeout(() => content.classList.remove('is-loading'), 60);
 }
+
+dashboardHome?.addEventListener('click', () => {
+    loadSection('dashboard');
+});
 
 async function postAction(formData) {
     const response = await fetch('actions.php', {
@@ -289,6 +294,7 @@ function updateLiveClock() {
         liveTime.textContent = now.toLocaleTimeString('en-PH', {
             hour: '2-digit',
             minute: '2-digit',
+            second: '2-digit',
         });
     }
 
@@ -307,8 +313,11 @@ window.setInterval(updateLiveClock, 1000);
 
 loadSection(activeSection);
 
-sidebarToggles.forEach((toggle) => {
-    toggle.addEventListener('click', () => {
-        document.body.classList.toggle('sidebar-collapsed');
-    });
+sidebarToggle?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    document.body.classList.toggle('sidebar-collapsed');
 });
+
+if (liveTime) {
+    liveTime.classList.add('live-time-motion');
+}
