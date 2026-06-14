@@ -387,7 +387,6 @@ if ($section === 'users') {
 
 if ($section === 'reports') {
     $reports = getReportsData(7, 6, 5);
-    $dailyAppointments = $reports['dailyAppointments'];
     $monthlyPatients = $reports['monthlyPatients'];
     $monthlyRevenue = $reports['monthlyRevenue'];
     $topServices = $reports['topServices'];
@@ -401,16 +400,16 @@ if ($section === 'reports') {
     </section>
     <section class="dashboard-card reports-grid">
         <div class="report-panel">
-            <div class="card-header"><div><h2>Daily Appointments</h2><p class="muted">Last 7 days of appointment volume.</p></div></div>
-            <canvas id="dailyAppointmentsChart" width="400" height="200"></canvas>
-        </div>
-        <div class="report-panel">
             <div class="card-header"><div><h2>Monthly Patients</h2><p class="muted">New patient registrations.</p></div></div>
-            <canvas id="monthlyPatientsChart" width="400" height="200"></canvas>
+            <div class="report-chart" style="height:200px; min-height:200px;">
+                <canvas id="monthlyPatientsChart" style="width:100%; height:100%;"></canvas>
+            </div>
         </div>
         <div class="report-panel">
             <div class="card-header"><div><h2>Monthly Revenue</h2><p class="muted">Collected revenue over time.</p></div></div>
-            <canvas id="monthlyRevenueChart" width="400" height="200"></canvas>
+            <div class="report-chart" style="height:200px; min-height:200px;">
+                <canvas id="monthlyRevenueChart" style="width:100%; height:100%;"></canvas>
+            </div>
         </div>
         <div class="report-panel">
             <div class="card-header"><div><h2>Most Requested Services</h2><p class="muted">Top 5 services by billing count.</p></div></div>
@@ -453,7 +452,6 @@ if ($section === 'reports') {
     </section>
     <script type="application/json" id="reports-data">
         <?= json_encode([
-            'dailyAppointments' => $dailyAppointments,
             'monthlyPatients' => $monthlyPatients,
             'monthlyRevenue' => $monthlyRevenue,
             'topServices' => $topServices,

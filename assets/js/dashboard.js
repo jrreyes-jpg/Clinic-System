@@ -20,6 +20,17 @@ if (localStorage.getItem('sidebarCollapsed') === 'true') {
 
 async function loadSection(section, params = {}) {
     activeSection = section;
+    // clean up any existing Chart.js instances to avoid leaks and layout issues
+    try {
+        if (window._clinicCharts) {
+            Object.keys(window._clinicCharts).forEach((k) => {
+                try { if (window._clinicCharts[k] && typeof window._clinicCharts[k].destroy === 'function') { window._clinicCharts[k].destroy(); } } catch (e) {}
+                window._clinicCharts[k] = null;
+            });
+        }
+    } catch (e) {
+        // non-fatal
+    }
     content.classList.add('is-loading');
     content.innerHTML = '<div class="section-loader"><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i><span>Loading section...</span></div>';
 
@@ -350,6 +361,11 @@ function updateLiveClock() {
 }
 
 function renderReportCharts() {
+    // only render when reports section is present to avoid accidental runs
+    if (!document.querySelector('.reports-grid') && !document.querySelector('#reports-data')) {
+        return;
+    }
+
     let reportsData = window.reportsData;
     if (!reportsData) {
         const reportJson = document.querySelector('#reports-data');
@@ -366,90 +382,58 @@ function renderReportCharts() {
         return;
     }
 
-    const dailyCanvas = document.querySelector('#dailyAppointmentsChart');
     const monthlyPatientsCanvas = document.querySelector('#monthlyPatientsChart');
     const monthlyRevenueCanvas = document.querySelector('#monthlyRevenueChart');
 
-    if (dailyCanvas) {
-        const labels = reportsData.dailyAppointments.map((item) => item.label);
-        const counts = reportsData.dailyAppointments.map((item) => item.count);
-        new Chart(dailyCanvas, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Appointments',
-                    data: counts,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.16)',
-                    fill: true,
-                    tension: 0.32,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true },
-                },
-            },
-        });
+    window._clinicCharts = window._clinicCharts || {};
+
+    // destroy any existing charts to avoid duplicates/layout growth
+    function destroyChart(key) {
+        try {
+            if (window._clinicCharts && window._clinicCharts[key]) {
+                window._clinicCharts[key].destroy();
+                window._clinicCharts[key] = null;
+            }
+        } catch (err) {
+            console.error('Error destroying chart', key, err);
+        }
     }
 
+    destroyChart('monthlyPatients');
+    destroyChart('monthlyRevenue');
+
     if (monthlyPatientsCanvas) {
-        const labels = reportsData.monthlyPatients.map((item) => item.label);
-        const counts = reportsData.monthlyPatients.map((item) => item.count);
-        new Chart(monthlyPatientsCanvas, {
+        const labelsM = reportsData.monthlyPatients.map((item) => item.label);
+        const countsM = reportsData.monthlyPatients.map((item) => item.count);
+        window._clinicCharts.monthlyPatients = new Chart(monthlyPatientsCanvas, {
             type: 'bar',
             data: {
-                labels,
-                datasets: [{
-                    label: 'New Patients',
-                    data: counts,
-                    backgroundColor: '#10b981',
-                }],
+                labels: labelsM,
+                datasets: [{ label: 'New Patients', data: countsM, backgroundColor: '#10b981' }],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true },
-                },
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
             },
         });
     }
 
     if (monthlyRevenueCanvas) {
-        const labels = reportsData.monthlyRevenue.map((item) => item.label);
+        const labelsR = reportsData.monthlyRevenue.map((item) => item.label);
         const amounts = reportsData.monthlyRevenue.map((item) => item.revenue);
-        new Chart(monthlyRevenueCanvas, {
+        window._clinicCharts.monthlyRevenue = new Chart(monthlyRevenueCanvas, {
             type: 'bar',
             data: {
-                labels,
-                datasets: [{
-                    label: 'Revenue',
-                    data: amounts,
-                    backgroundColor: '#f59e0b',
-                }],
+                labels: labelsR,
+                datasets: [{ label: 'Revenue', data: amounts, backgroundColor: '#f59e0b' }],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true },
-                },
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
             },
         });
     }
@@ -459,6 +443,8 @@ updateLiveClock();
 window.setInterval(updateLiveClock, 1000);
 
 renderReportCharts();
+
+// No expand/collapse behavior for Reports — sparkline only by default.
 
 loadSection(activeSection);
 

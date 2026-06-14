@@ -1347,7 +1347,6 @@ function getMostRequestedServices(int $limit = 5): array
 function getReportsData(int $days = 7, int $months = 6, int $topServices = 5): array
 {
     return [
-        'dailyAppointments' => getDailyAppointmentCounts($days),
         'monthlyPatients' => getMonthlyPatientCounts($months),
         'monthlyRevenue' => getMonthlyRevenue($months),
         'topServices' => getMostRequestedServices($topServices),
