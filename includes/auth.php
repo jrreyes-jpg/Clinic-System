@@ -244,7 +244,7 @@ function createUser(
     string $password,
     string $role,
     string $mobile = ''
-): void
+): int
 {
     $pdo = getDatabaseConnection();
     $hasMobile = columnExists('users', 'mobile');
@@ -267,6 +267,8 @@ function createUser(
 
     $statement = $pdo->prepare("INSERT INTO users ({$columns}) VALUES ({$values})");
     $statement->execute($parameters);
+
+    return (int) $pdo->lastInsertId();
 }
 
 function updateReceptionist(int $userId, string $fullname, string $username, string $email, string $mobile): void
@@ -740,6 +742,79 @@ function listServices(string $search = ''): array
     return $statement->fetchAll();
 }
 
+/* Notifications helper functions */
+function createNotification(?int $userId, string $type, string $message, ?array $meta = null): void
+{
+    if (!tableExists('notifications')) {
+        return;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'INSERT INTO notifications (user_id, type, message, meta) VALUES (:user_id, :type, :message, :meta)'
+    );
+    $statement->execute([
+        'user_id' => $userId,
+        'type' => $type,
+        'message' => $message,
+        'meta' => $meta === null ? null : json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+}
+
+function getNotificationsForUser(int $userId, int $limit = 20): array
+{
+    if (!tableExists('notifications')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT id, user_id, type, message, meta, is_read, created_at
+         FROM notifications
+         WHERE user_id = :user_id OR user_id IS NULL
+         ORDER BY created_at DESC
+         LIMIT :limit'
+    );
+    $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+
+    $rows = $statement->fetchAll();
+
+    foreach ($rows as &$r) {
+        $r['meta'] = $r['meta'] ? json_decode($r['meta'], true) : null;
+        $r['is_read'] = (bool) $r['is_read'];
+    }
+
+    return $rows;
+}
+
+function countUnreadNotifications(int $userId): int
+{
+    if (!tableExists('notifications')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT COUNT(*) FROM notifications WHERE (user_id = :user_id OR user_id IS NULL) AND is_read = 0'
+    );
+    $statement->execute(['user_id' => $userId]);
+
+    return (int) $statement->fetchColumn();
+}
+
+function markNotificationRead(int $notificationId): void
+{
+    if (!tableExists('notifications')) {
+        return;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE id = :id');
+    $statement->execute(['id' => $notificationId]);
+}
+
 function findServiceById(int $serviceId): ?array
 {
     if (!tableExists('services')) {
@@ -1138,6 +1213,191 @@ function countAppointmentsByStatus(string $status): int
     return (int) $statement->fetchColumn();
 }
 
+function getDailyAppointmentCounts(int $days = 7): array
+{
+    if (!tableExists('appointments')) {
+        return [];
+    }
+
+    $days = max(1, $days);
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT appointment_date AS period, COUNT(*) AS count
+         FROM appointments
+         WHERE appointment_date BETWEEN DATE_SUB(CURDATE(), INTERVAL :days_minus1 DAY) AND CURDATE()
+         GROUP BY appointment_date
+         ORDER BY appointment_date ASC'
+    );
+    $statement->execute(['days_minus1' => $days - 1]);
+    $rows = $statement->fetchAll();
+
+    $counts = [];
+    foreach ($rows as $row) {
+        $counts[$row['period']] = (int) $row['count'];
+    }
+
+    $result = [];
+    $date = new DateTimeImmutable('-' . ($days - 1) . ' days');
+    for ($i = 0; $i < $days; $i++, $date = $date->modify('+1 day')) {
+        $key = $date->format('Y-m-d');
+        $result[] = [
+            'label' => $date->format('M d'),
+            'count' => $counts[$key] ?? 0,
+        ];
+    }
+
+    return $result;
+}
+
+function getMonthlyPatientCounts(int $months = 6): array
+{
+    if (!tableExists('patients')) {
+        return [];
+    }
+
+    $months = max(1, $months);
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS count
+         FROM patients
+         WHERE created_at >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL :months_minus1 MONTH), '%Y-%m-01')
+         GROUP BY period
+         ORDER BY period ASC"
+    );
+    $statement->execute(['months_minus1' => $months - 1]);
+    $rows = $statement->fetchAll();
+
+    $counts = [];
+    foreach ($rows as $row) {
+        $counts[$row['period']] = (int) $row['count'];
+    }
+
+    $result = [];
+    $date = new DateTimeImmutable('first day of -' . ($months - 1) . ' months');
+    for ($i = 0; $i < $months; $i++, $date = $date->modify('+1 month')) {
+        $key = $date->format('Y-m');
+        $result[] = [
+            'label' => $date->format('M Y'),
+            'count' => $counts[$key] ?? 0,
+        ];
+    }
+
+    return $result;
+}
+
+function getMonthlyRevenue(int $months = 6): array
+{
+    if (!tableExists('bills')) {
+        return [];
+    }
+
+    $months = max(1, $months);
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        "SELECT DATE_FORMAT(payment_date, '%Y-%m') AS period, SUM(amount) AS revenue
+         FROM bills
+         WHERE payment_date IS NOT NULL
+             AND payment_status IN ('Paid', 'Partial')
+             AND payment_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL :months_minus1 MONTH), '%Y-%m-01')
+         GROUP BY period
+         ORDER BY period ASC"
+    );
+    $statement->execute(['months_minus1' => $months - 1]);
+    $rows = $statement->fetchAll();
+
+    $revenue = [];
+    foreach ($rows as $row) {
+        $revenue[$row['period']] = (float) $row['revenue'];
+    }
+
+    $result = [];
+    $date = new DateTimeImmutable('first day of -' . ($months - 1) . ' months');
+    for ($i = 0; $i < $months; $i++, $date = $date->modify('+1 month')) {
+        $key = $date->format('Y-m');
+        $result[] = [
+            'label' => $date->format('M Y'),
+            'revenue' => $revenue[$key] ?? 0.0,
+        ];
+    }
+
+    return $result;
+}
+
+function getMostRequestedServices(int $limit = 5): array
+{
+    if (!tableExists('bills')) {
+        return [];
+    }
+
+    $limit = max(1, min(20, $limit));
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        "SELECT s.service_name, COUNT(*) AS request_count, SUM(b.amount) AS total_amount
+         FROM bills b
+         INNER JOIN services s ON s.id = b.service_id
+         GROUP BY b.service_id
+         ORDER BY request_count DESC
+         LIMIT {$limit}"
+    );
+    $statement->execute();
+
+    return $statement->fetchAll();
+}
+
+function getReportsData(int $days = 7, int $months = 6, int $topServices = 5): array
+{
+    return [
+        'dailyAppointments' => getDailyAppointmentCounts($days),
+        'monthlyPatients' => getMonthlyPatientCounts($months),
+        'monthlyRevenue' => getMonthlyRevenue($months),
+        'topServices' => getMostRequestedServices($topServices),
+        'recentAudits' => getRecentAuditLogs(10),
+    ];
+}
+
+function createAuditLog(?int $userId, string $action, ?array $meta = null): void
+{
+    if (!tableExists('audit_logs')) {
+        return;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'INSERT INTO audit_logs (user_id, action, meta) VALUES (:user_id, :action, :meta)'
+    );
+    $statement->execute([
+        'user_id' => $userId,
+        'action' => $action,
+        'meta' => $meta === null ? null : json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+}
+
+function getRecentAuditLogs(int $limit = 20): array
+{
+    if (!tableExists('audit_logs')) {
+        return [];
+    }
+
+    $limit = max(1, min(100, $limit));
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT a.id, a.user_id, a.action, a.meta, a.created_at, u.fullname AS user_fullname, u.username
+         FROM audit_logs a
+         LEFT JOIN users u ON u.id = a.user_id
+         ORDER BY a.created_at DESC
+         LIMIT :limit'
+    );
+    $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+
+    $rows = $statement->fetchAll();
+    foreach ($rows as &$r) {
+        $r['meta'] = $r['meta'] ? json_decode($r['meta'], true) : null;
+    }
+
+    return $rows;
+}
+
 function appointmentServiceColumn(): string
 {
     return columnExists('appointments', 'service') ? 'service' : 'service_type';
@@ -1200,7 +1460,7 @@ function listAppointmentsForMonth(string $month): array
     return $statement->fetchAll();
 }
 
-function createAppointment(array $data): void
+function createAppointment(array $data): int
 {
     $pdo = getDatabaseConnection();
     $serviceColumn = appointmentServiceColumn();
@@ -1217,6 +1477,8 @@ function createAppointment(array $data): void
         'status' => $data['status'],
         'notes' => $data['notes'],
     ]);
+
+    return (int) $pdo->lastInsertId();
 }
 
 function updateAppointment(int $appointmentId, array $data): void

@@ -32,6 +32,8 @@ if ($username !== '') {
 
             smtpSendMail($user['email'], $user['fullname'], 'Clinic Password Reset', $message);
         }
+        createNotification(null, 'password_reset_requested', 'Password reset requested for ' . $user['username'], ['user_id' => (int) $user['id']]);
+        createAuditLog(null, 'password reset requested', ['target_user_id' => (int) $user['id'], 'username' => $user['username']]);
     }
 }
 

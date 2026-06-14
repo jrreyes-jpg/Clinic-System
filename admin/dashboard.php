@@ -24,6 +24,7 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
             defaultSection: 'dashboard'
         };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="../assets/js/dashboard.js" defer></script>
 </head>
 <body class="admin-dashboard-body">
@@ -99,6 +100,25 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
                     <div class="live-clock" aria-live="polite">
                         <strong data-live-time>--:--</strong>
                         <span data-live-date>Loading date...</span>
+                    </div>
+
+                    <div class="notifications-wrap">
+                        <button class="icon-button" type="button" aria-label="Notifications" id="notificationsToggle">
+                            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                            <span class="notification-badge" id="notificationCount" hidden>0</span>
+                        </button>
+                        <div class="notifications-dropdown" id="notificationsDropdown" hidden>
+                            <div class="notifications-header">
+                                <strong>Notifications</strong>
+                                <button class="link-button" type="button" id="markAllRead">Mark all read</button>
+                            </div>
+                            <div class="notifications-list" id="notificationsList">
+                                <p class="muted">Loading...</p>
+                            </div>
+                            <div class="notifications-footer">
+                                <a href="#" id="viewAllNotifications">View all</a>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="profile-menu-wrap">

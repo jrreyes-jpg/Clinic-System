@@ -386,9 +386,80 @@ if ($section === 'users') {
 }
 
 if ($section === 'reports') {
+    $reports = getReportsData(7, 6, 5);
+    $dailyAppointments = $reports['dailyAppointments'];
+    $monthlyPatients = $reports['monthlyPatients'];
+    $monthlyRevenue = $reports['monthlyRevenue'];
+    $topServices = $reports['topServices'];
     sectionHeader('Reports', 'High-level clinic summaries.');
     ?>
-    <section class="dashboard-stat-grid"><article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-hospital-user"></i></div><div><span>Active Patients</span><strong><?= e((string) countActivePatients()) ?></strong></div></article><article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div><div><span>Today</span><strong><?= e((string) countAppointmentsToday()) ?></strong></div></article><article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-users"></i></div><div><span>Users</span><strong><?= e((string) countActiveUsers()) ?></strong></div></article></section>
+    <section class="dashboard-stat-grid">
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div><div><span>Today's Appointments</span><strong><?= e((string) countAppointmentsToday()) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-user-plus"></i></div><div><span>New Patients (6 mo)</span><strong><?= e((string) array_sum(array_column($monthlyPatients, 'count'))) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-dollar-sign"></i></div><div><span>Revenue (6 mo)</span><strong><?= e(number_format(array_sum(array_column($monthlyRevenue, 'revenue')), 2)) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-chart-column"></i></div><div><span>Top Service</span><strong><?= e($topServices[0]['service_name'] ?? 'N/A') ?></strong></div></article>
+    </section>
+    <section class="dashboard-card reports-grid">
+        <div class="report-panel">
+            <div class="card-header"><div><h2>Daily Appointments</h2><p class="muted">Last 7 days of appointment volume.</p></div></div>
+            <canvas id="dailyAppointmentsChart" width="400" height="200"></canvas>
+        </div>
+        <div class="report-panel">
+            <div class="card-header"><div><h2>Monthly Patients</h2><p class="muted">New patient registrations.</p></div></div>
+            <canvas id="monthlyPatientsChart" width="400" height="200"></canvas>
+        </div>
+        <div class="report-panel">
+            <div class="card-header"><div><h2>Monthly Revenue</h2><p class="muted">Collected revenue over time.</p></div></div>
+            <canvas id="monthlyRevenueChart" width="400" height="200"></canvas>
+        </div>
+        <div class="report-panel">
+            <div class="card-header"><div><h2>Most Requested Services</h2><p class="muted">Top 5 services by billing count.</p></div></div>
+            <div class="table-wrap">
+                <table class="compact-table">
+                    <thead><tr><th>Service</th><th>Requests</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                        <?php if ($topServices === []): ?><tr><td colspan="3">No data available.</td></tr><?php endif; ?>
+                        <?php foreach ($topServices as $service): ?>
+                            <tr>
+                                <td><?= e($service['service_name']) ?></td>
+                                <td><?= e((string) $service['request_count']) ?></td>
+                                <td><?= e(number_format((float) $service['total_amount'], 2)) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-panel">
+            <div class="card-header"><div><h2>Recent Audit Logs</h2><p class="muted">Recent system actions for accountability.</p></div></div>
+            <div class="table-wrap">
+                <table class="compact-table">
+                    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Meta</th></tr></thead>
+                    <tbody>
+                        <?php $recentAudits = $reports['recentAudits'] ?? []; ?>
+                        <?php if ($recentAudits === []): ?><tr><td colspan="4">No audit logs yet.</td></tr><?php endif; ?>
+                        <?php foreach ($recentAudits as $audit): ?>
+                            <tr>
+                                <td><?= e(date('M d, Y H:i', strtotime((string) $audit['created_at']))) ?></td>
+                                <td><?= e($audit['user_fullname'] ?? ($audit['username'] ?? 'System')) ?></td>
+                                <td><?= e($audit['action']) ?></td>
+                                <td><?= e($audit['meta'] ? json_encode($audit['meta']) : '') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <script type="application/json" id="reports-data">
+        <?= json_encode([
+            'dailyAppointments' => $dailyAppointments,
+            'monthlyPatients' => $monthlyPatients,
+            'monthlyRevenue' => $monthlyRevenue,
+            'topServices' => $topServices,
+            'recentAudits' => $reports['recentAudits'] ?? [],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+    </script>
     <?php
     exit;
 }

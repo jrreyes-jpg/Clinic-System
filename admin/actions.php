@@ -37,12 +37,16 @@ try {
         if ($errors !== []) {
             jsonResponse(false, implode(' ', $errors));
         }
-        createPatient($data);
+        $patientId = createPatient($data);
+        createNotification(null, 'new_patient', 'New patient registered: ' . $data['fullname'], ['patient_id' => $patientId]);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'created patient', ['patient_id' => $patientId, 'fullname' => $data['fullname']]);
         jsonResponse(true, 'Patient created successfully.');
     }
 
     if ($action === 'archive_patient') {
-        archivePatient((int) ($_POST['id'] ?? 0));
+        $pid = (int) ($_POST['id'] ?? 0);
+        archivePatient($pid);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'archived patient', ['patient_id' => $pid]);
         jsonResponse(true, 'Patient archived successfully.');
     }
 
@@ -61,6 +65,7 @@ try {
             jsonResponse(false, $errors === [] ? 'Invalid patient record.' : implode(' ', $errors));
         }
         updatePatient($patientId, $data);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'updated patient', ['patient_id' => $patientId]);
         jsonResponse(true, 'Patient updated successfully.');
     }
 
@@ -77,17 +82,25 @@ try {
         if ($errors !== []) {
             jsonResponse(false, implode(' ', $errors));
         }
-        createAppointment($data);
+        $appointmentId = createAppointment($data);
+        createNotification(null, 'appointment_scheduled', 'Appointment scheduled for patient ID ' . $data['patient_id'] . ' on ' . $data['appointment_date'], ['appointment_id' => $appointmentId]);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'created appointment', ['appointment_id' => $appointmentId, 'patient_id' => $data['patient_id'], 'date' => $data['appointment_date']]);
         jsonResponse(true, 'Appointment scheduled successfully.');
     }
 
     if ($action === 'complete_appointment') {
-        updateAppointmentStatus((int) ($_POST['id'] ?? 0), 'completed');
+        $id = (int) ($_POST['id'] ?? 0);
+        updateAppointmentStatus($id, 'completed');
+        createNotification(null, 'appointment_completed', 'Appointment #' . $id . ' marked completed.', ['appointment_id' => $id]);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'completed appointment', ['appointment_id' => $id]);
         jsonResponse(true, 'Appointment marked as completed.');
     }
 
     if ($action === 'cancel_appointment') {
-        updateAppointmentStatus((int) ($_POST['id'] ?? 0), 'cancelled');
+        $id = (int) ($_POST['id'] ?? 0);
+        updateAppointmentStatus($id, 'cancelled');
+        createNotification(null, 'appointment_cancelled', 'Appointment #' . $id . ' was cancelled.', ['appointment_id' => $id]);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'cancelled appointment', ['appointment_id' => $id]);
         jsonResponse(true, 'Appointment cancelled successfully.');
     }
 
@@ -106,6 +119,11 @@ try {
             jsonResponse(false, $errors === [] ? 'Please select an appointment to update.' : implode(' ', $errors));
         }
         updateAppointment($appointmentId, $data);
+        if ($data['status'] === 'confirmed') {
+            createNotification(null, 'appointment_confirmed', 'Appointment #' . $appointmentId . ' was confirmed.', ['appointment_id' => $appointmentId]);
+        }
+        createAuditLog((int) ($currentUser['id'] ?? null), 'updated appointment', ['appointment_id' => $appointmentId, 'status' => $data['status']]);
+        
         jsonResponse(true, 'Appointment updated successfully.');
     }
 
@@ -121,7 +139,8 @@ try {
             jsonResponse(false, implode(' ', $errors));
         }
 
-        createService($data);
+        $serviceId = createService($data);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'created service', ['service_id' => $serviceId, 'service_name' => $data['service_name']]);
         jsonResponse(true, 'Service created successfully.');
     }
 
@@ -139,6 +158,7 @@ try {
         }
 
         updateService($serviceId, $data);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'updated service', ['service_id' => $serviceId]);
         jsonResponse(true, 'Service updated successfully.');
     }
 
@@ -156,7 +176,8 @@ try {
             jsonResponse(false, implode(' ', $errors));
         }
 
-        createBill($data);
+        $billId = createBill($data);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'created bill', ['bill_id' => $billId, 'patient_id' => $data['patient_id']]);
         jsonResponse(true, 'Bill generated successfully.');
     }
 
@@ -173,6 +194,7 @@ try {
         }
 
         recordPayment($billId, $data);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'recorded payment', ['bill_id' => $billId, 'payment_status' => $data['payment_status']]);
         jsonResponse(true, 'Payment recorded successfully.');
     }
 
@@ -187,7 +209,8 @@ try {
             jsonResponse(false, 'Please complete all user fields with a valid email and 8-character password.');
         }
 
-        createUser($fullname, $username, $email, $password, 'receptionist', $mobile);
+        $newId = createUser($fullname, $username, $email, $password, 'receptionist', $mobile);
+        createAuditLog((int) ($currentUser['id'] ?? null), 'created user', ['user_id' => $newId, 'username' => $username]);
         jsonResponse(true, 'Receptionist account created successfully.');
     }
 

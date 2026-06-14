@@ -42,6 +42,8 @@ async function loadSection(section, params = {}) {
         item.classList.toggle('active', item.dataset.section === section);
     });
 
+    renderReportCharts();
+
     localStorage.setItem('adminActiveSection', section);
     window.setTimeout(() => content.classList.remove('is-loading'), 60);
 }
@@ -347,8 +349,116 @@ function updateLiveClock() {
     }
 }
 
+function renderReportCharts() {
+    let reportsData = window.reportsData;
+    if (!reportsData) {
+        const reportJson = document.querySelector('#reports-data');
+        if (reportJson) {
+            try {
+                reportsData = JSON.parse(reportJson.textContent || '{}');
+            } catch (error) {
+                console.error('Failed to parse report data', error);
+                return;
+            }
+        }
+    }
+    if (!reportsData) {
+        return;
+    }
+
+    const dailyCanvas = document.querySelector('#dailyAppointmentsChart');
+    const monthlyPatientsCanvas = document.querySelector('#monthlyPatientsChart');
+    const monthlyRevenueCanvas = document.querySelector('#monthlyRevenueChart');
+
+    if (dailyCanvas) {
+        const labels = reportsData.dailyAppointments.map((item) => item.label);
+        const counts = reportsData.dailyAppointments.map((item) => item.count);
+        new Chart(dailyCanvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Appointments',
+                    data: counts,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.16)',
+                    fill: true,
+                    tension: 0.32,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true },
+                },
+            },
+        });
+    }
+
+    if (monthlyPatientsCanvas) {
+        const labels = reportsData.monthlyPatients.map((item) => item.label);
+        const counts = reportsData.monthlyPatients.map((item) => item.count);
+        new Chart(monthlyPatientsCanvas, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'New Patients',
+                    data: counts,
+                    backgroundColor: '#10b981',
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true },
+                },
+            },
+        });
+    }
+
+    if (monthlyRevenueCanvas) {
+        const labels = reportsData.monthlyRevenue.map((item) => item.label);
+        const amounts = reportsData.monthlyRevenue.map((item) => item.revenue);
+        new Chart(monthlyRevenueCanvas, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: amounts,
+                    backgroundColor: '#f59e0b',
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true },
+                },
+            },
+        });
+    }
+}
+
 updateLiveClock();
 window.setInterval(updateLiveClock, 1000);
+
+renderReportCharts();
 
 loadSection(activeSection);
 
@@ -357,6 +467,107 @@ sidebarToggle?.addEventListener('click', (event) => {
     const collapsed = document.body.classList.toggle('sidebar-collapsed');
     localStorage.setItem('sidebarCollapsed', String(collapsed));
 });
+
+// Notifications
+const notificationsToggle = document.querySelector('#notificationsToggle');
+const notificationsDropdown = document.querySelector('#notificationsDropdown');
+const notificationsList = document.querySelector('#notificationsList');
+const notificationCount = document.querySelector('#notificationCount');
+const markAllReadBtn = document.querySelector('#markAllRead');
+
+async function fetchNotifications() {
+    try {
+        const res = await fetch('notifications.php', { headers: { 'X-Requested-With': 'fetch' } });
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const list = data.notifications || [];
+        notificationsList.innerHTML = '';
+
+        if (list.length === 0) {
+            notificationsList.innerHTML = '<p class="muted">No notifications.</p>';
+        } else {
+            list.forEach((note) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'notification-item' + (note.is_read ? ' is-read' : '');
+                item.dataset.id = note.id;
+                item.innerHTML = `<div><strong>${escapeHtml(note.type.replace(/_/g, ' '))}</strong><small class="muted">${new Date(note.created_at).toLocaleString()}</small><div class="muted">${escapeHtml(note.message)}</div></div>`;
+                item.addEventListener('click', async () => {
+                    await markNotificationRead(note.id);
+                    if (note.meta && note.meta.appointment_id) {
+                        loadSection('appointments');
+                    }
+                    fetchNotifications();
+                });
+                notificationsList.appendChild(item);
+            });
+        }
+
+        const unread = data.unread || 0;
+        if (unread > 0) {
+            notificationCount.hidden = false;
+            notificationCount.textContent = String(unread);
+        } else {
+            notificationCount.hidden = true;
+        }
+    } catch (err) {
+        console.error('Failed to load notifications', err);
+    }
+}
+
+async function markNotificationRead(id) {
+    try {
+        await fetch('notifications.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'fetch' },
+            body: new URLSearchParams({ action: 'mark_read', id: String(id) }),
+        });
+    } catch (err) {
+        console.error('Failed to mark read', err);
+    }
+}
+
+async function markAllRead() {
+    try {
+        await fetch('notifications.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'fetch' },
+            body: new URLSearchParams({ action: 'mark_all_read' }),
+        });
+        fetchNotifications();
+    } catch (err) {
+        console.error('Failed to mark all read', err);
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+notificationsToggle?.addEventListener('click', (e) => {
+    const open = notificationsDropdown?.hidden === false;
+    if (notificationsDropdown) {
+        notificationsDropdown.hidden = open;
+    }
+    if (!open) {
+        fetchNotifications();
+    }
+});
+
+markAllReadBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    markAllRead();
+});
+
+// poll every 30s
+setInterval(fetchNotifications, 30000);
+fetchNotifications();
 
 if (liveTime) {
     liveTime.classList.add('live-time-motion');

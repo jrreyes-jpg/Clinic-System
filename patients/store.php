@@ -31,5 +31,6 @@ if ($errors !== []) {
 }
 
 $patientId = createPatient($data);
+createAuditLog((int) (currentUser()['id'] ?? 0), 'created patient', ['patient_id' => $patientId, 'fullname' => $data['fullname']]);
 setFlashSuccess('Patient record created successfully.');
 redirect('view.php?id=' . $patientId);
