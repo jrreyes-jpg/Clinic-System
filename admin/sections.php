@@ -16,15 +16,17 @@ function sectionHeader(string $title, string $subtitle): void
 if ($section === 'dashboard') {
     $totalPatients = countActivePatients();
     $appointmentsToday = countAppointmentsToday();
+    $pendingAppointments = countAppointmentsByStatus('pending');
+    $completedAppointments = countAppointmentsByStatus('completed');
     $activeUsers = countActiveUsers();
     $recentActivities = recentDashboardActivities();
     sectionHeader('Dashboard', 'Clinic overview and daily activity.');
     ?>
     <section class="dashboard-stat-grid">
         <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-hospital-user"></i></div><div><span>Total Patients</span><strong><?= e((string) $totalPatients) ?></strong></div></article>
-        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div><div><span>Appointments Today</span><strong><?= e((string) $appointmentsToday) ?></strong></div></article>
-        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-users-gear"></i></div><div><span>Active Users</span><strong><?= e((string) $activeUsers) ?></strong></div></article>
-        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-clock-rotate-left"></i></div><div><span>Recent Activities</span><strong><?= e((string) count($recentActivities)) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div><div><span>Today's Appointments</span><strong><?= e((string) $appointmentsToday) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div><div><span>Pending Appointments</span><strong><?= e((string) $pendingAppointments) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div><div><span>Completed Appointments</span><strong><?= e((string) $completedAppointments) ?></strong></div></article>
     </section>
     <section class="admin-content-grid">
         <article class="dashboard-card">
@@ -103,12 +105,50 @@ if ($section === 'patients') {
 
 if ($section === 'appointments') {
     $patients = listPatients();
-    $appointments = listAppointments();
-    sectionHeader('Appointments', 'Schedule and update patient visits without leaving the dashboard.');
+    $selectedDate = trim((string) ($_GET['date'] ?? date('Y-m-d')));
+    $selectedStatus = trim((string) ($_GET['status'] ?? ''));
+    $calendarMonth = trim((string) ($_GET['month'] ?? date('Y-m')));
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
+        $selectedDate = date('Y-m-d');
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}$/', $calendarMonth)) {
+        $calendarMonth = date('Y-m');
+    }
+
+    $appointments = listAppointments($selectedDate, $selectedStatus);
+    $calendarAppointments = listAppointmentsForMonth($calendarMonth);
+    $appointmentsByDate = [];
+
+    foreach ($calendarAppointments as $calendarAppointment) {
+        $appointmentsByDate[$calendarAppointment['appointment_date']][] = $calendarAppointment;
+    }
+
+    $monthStart = new DateTimeImmutable($calendarMonth . '-01');
+    $calendarStart = $monthStart->modify('-' . ((int) $monthStart->format('N') - 1) . ' days');
+    $monthLabel = $monthStart->format('F Y');
+
+    sectionHeader('Appointments', 'Book, reschedule, cancel, and monitor patient visits.');
     ?>
-    <section class="admin-content-grid">
+    <section class="appointment-toolbar dashboard-card">
+        <form class="search-bar spa-search" data-section-search="appointments">
+            <input type="date" name="date" value="<?= e($selectedDate) ?>">
+            <select name="status">
+                <option value="">All Status</option>
+                <option value="pending" <?= $selectedStatus === 'pending' ? 'selected' : '' ?>>Pending</option>
+                <option value="confirmed" <?= $selectedStatus === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
+                <option value="completed" <?= $selectedStatus === 'completed' ? 'selected' : '' ?>>Completed</option>
+                <option value="cancelled" <?= $selectedStatus === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+            </select>
+            <input type="month" name="month" value="<?= e($calendarMonth) ?>">
+            <button class="button button-small" type="submit">Filter</button>
+        </form>
+    </section>
+
+    <section class="appointment-layout">
         <article class="dashboard-card">
-            <div class="card-header"><div><h2>Schedule Appointment</h2><p class="muted">Create an appointment for an existing patient.</p></div><i class="fa-solid fa-calendar-plus"></i></div>
+            <div class="card-header"><div><h2>Book Appointment</h2><p class="muted">Create an appointment for an existing patient.</p></div><i class="fa-solid fa-calendar-plus"></i></div>
             <form class="admin-form ajax-form" data-action="create_appointment">
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <div class="form-grid">
@@ -122,13 +162,75 @@ if ($section === 'appointments') {
                 <button class="button" type="submit">Save Appointment</button>
             </form>
         </article>
+
         <article class="dashboard-card">
-            <div class="card-header"><div><h2>Appointment List</h2><p class="muted"><?= count($appointments) ?> appointment<?= count($appointments) === 1 ? '' : 's' ?></p></div><i class="fa-solid fa-list-check"></i></div>
-            <div class="activity-list">
-                <?php if ($appointments === []): ?><p class="muted">No appointments yet.</p><?php endif; ?>
-                <?php foreach ($appointments as $appointment): ?>
-                    <div class="activity-item"><div class="activity-icon"><i class="fa-solid fa-tooth"></i></div><div><strong><?= e($appointment['patient_name']) ?></strong><span><?= e($appointment['service_type']) ?> - <?= e($appointment['appointment_date']) ?> <?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?> - <?= e(ucfirst($appointment['status'])) ?></span></div><button class="button button-small button-light" type="button" data-complete-appointment="<?= e((string) $appointment['id']) ?>">Complete</button></div>
+            <div class="card-header"><div><h2>Reschedule Appointment</h2><p class="muted">Choose an appointment from the daily list to edit.</p></div><i class="fa-solid fa-clock"></i></div>
+            <form class="admin-form ajax-form" data-action="update_appointment">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="id" id="editAppointmentId">
+                <div class="form-grid">
+                    <div class="form-group"><label>Patient</label><select name="patient_id" id="editAppointmentPatient" required><option value="">Select patient</option><?php foreach ($patients as $patient): ?><option value="<?= e((string) $patient['id']) ?>"><?= e($patient['patient_no'] . ' - ' . $patient['fullname']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label>Service</label><input name="service_type" id="editAppointmentService" required></div>
+                    <div class="form-group"><label>Date</label><input type="date" name="appointment_date" id="editAppointmentDate" required></div>
+                    <div class="form-group"><label>Time</label><input type="time" name="appointment_time" id="editAppointmentTime" required></div>
+                    <div class="form-group"><label>Status</label><select name="status" id="editAppointmentStatus"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+                    <div class="form-group form-group-wide"><label>Notes</label><input name="notes" id="editAppointmentNotes"></div>
+                </div>
+                <button class="button" type="submit">Update Appointment</button>
+            </form>
+        </article>
+    </section>
+
+    <section class="appointment-layout">
+        <article class="dashboard-card">
+            <div class="card-header"><div><h2>Daily Appointment List</h2><p class="muted"><?= e(date('M d, Y', strtotime($selectedDate))) ?> - <?= count($appointments) ?> record<?= count($appointments) === 1 ? '' : 's' ?></p></div><i class="fa-solid fa-list-check"></i></div>
+            <div class="table-wrap">
+                <table class="compact-table appointment-table">
+                    <thead><tr><th>Time</th><th>Patient</th><th>Service</th><th>Status</th><th>Contact</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        <?php if ($appointments === []): ?><tr><td colspan="6">No appointments for this filter.</td></tr><?php endif; ?>
+                        <?php foreach ($appointments as $appointment): ?>
+                            <tr>
+                                <td><?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?></td>
+                                <td><strong><?= e($appointment['patient_name']) ?></strong><br><span class="muted"><?= e($appointment['patient_no']) ?></span></td>
+                                <td><?= e($appointment['service_type']) ?></td>
+                                <td><span class="status-badge status-<?= e($appointment['status']) ?>"><?= e(ucfirst($appointment['status'])) ?></span></td>
+                                <td><?= e($appointment['contact_number']) ?></td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button class="button button-small" type="button" data-edit-appointment='<?= e(json_encode($appointment)) ?>'>Reschedule</button>
+                                        <?php if ($appointment['status'] !== 'completed'): ?><button class="button button-small button-light" type="button" data-complete-appointment="<?= e((string) $appointment['id']) ?>">Complete</button><?php endif; ?>
+                                        <?php if ($appointment['status'] !== 'cancelled'): ?><button class="button button-small button-secondary" type="button" data-cancel-appointment="<?= e((string) $appointment['id']) ?>">Cancel</button><?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="dashboard-card">
+            <div class="card-header"><div><h2>Calendar View</h2><p class="muted"><?= e($monthLabel) ?></p></div><i class="fa-solid fa-calendar-days"></i></div>
+            <div class="calendar-grid">
+                <?php foreach (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as $dayName): ?>
+                    <div class="calendar-day-name"><?= e($dayName) ?></div>
                 <?php endforeach; ?>
+                <?php for ($i = 0; $i < 42; $i++): ?>
+                    <?php
+                    $day = $calendarStart->modify('+' . $i . ' days');
+                    $dayKey = $day->format('Y-m-d');
+                    $isMuted = $day->format('Y-m') !== $calendarMonth;
+                    $dayAppointments = $appointmentsByDate[$dayKey] ?? [];
+                    ?>
+                    <div class="calendar-cell <?= $isMuted ? 'is-muted' : '' ?>">
+                        <strong><?= e($day->format('j')) ?></strong>
+                        <?php foreach (array_slice($dayAppointments, 0, 2) as $calendarAppointment): ?>
+                            <span class="calendar-pill status-<?= e($calendarAppointment['status']) ?>"><?= e(substr((string) $calendarAppointment['appointment_time'], 0, 5)) ?> <?= e($calendarAppointment['patient_name']) ?></span>
+                        <?php endforeach; ?>
+                        <?php if (count($dayAppointments) > 2): ?><small>+<?= e((string) (count($dayAppointments) - 2)) ?> more</small><?php endif; ?>
+                    </div>
+                <?php endfor; ?>
             </div>
         </article>
     </section>

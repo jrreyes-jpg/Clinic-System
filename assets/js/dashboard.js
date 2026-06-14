@@ -2,7 +2,13 @@ const content = document.querySelector('#dashboardContent');
 const title = document.querySelector('#sectionTitle');
 const subtitle = document.querySelector('#sectionSubtitle');
 const nav = document.querySelector('[data-dashboard-nav]');
-const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+const sidebarToggles = document.querySelectorAll('[data-sidebar-toggle]');
+const profileToggle = document.querySelector('[data-profile-toggle]');
+const profileDropdown = document.querySelector('[data-profile-dropdown]');
+const profileModal = document.querySelector('[data-profile-modal]');
+const profileForm = document.querySelector('[data-profile-form]');
+const liveTime = document.querySelector('[data-live-time]');
+const liveDate = document.querySelector('[data-live-date]');
 
 let activeSection = window.dashboardConfig?.defaultSection || 'dashboard';
 
@@ -53,13 +59,53 @@ nav?.addEventListener('click', (event) => {
     loadSection(button.dataset.section);
 });
 
+document.addEventListener('click', (event) => {
+    const profileButton = event.target.closest('[data-profile-toggle]');
+    const modalOpenButton = event.target.closest('[data-profile-modal-open]');
+    const modalCloseButton = event.target.closest('[data-profile-modal-close]');
+    const menuSectionButton = event.target.closest('.profile-dropdown [data-section]');
+
+    if (profileButton) {
+        const isOpen = profileDropdown?.hidden === false;
+        if (profileDropdown) {
+            profileDropdown.hidden = isOpen;
+            profileToggle?.setAttribute('aria-expanded', String(!isOpen));
+        }
+        return;
+    }
+
+    if (modalOpenButton) {
+        if (profileDropdown) profileDropdown.hidden = true;
+        if (profileModal) profileModal.hidden = false;
+        return;
+    }
+
+    if (modalCloseButton || event.target === profileModal) {
+        if (profileModal) profileModal.hidden = true;
+        return;
+    }
+
+    if (menuSectionButton) {
+        if (profileDropdown) profileDropdown.hidden = true;
+        loadSection(menuSectionButton.dataset.section);
+        return;
+    }
+
+    if (profileDropdown && !profileDropdown.hidden && !event.target.closest('.profile-menu-wrap')) {
+        profileDropdown.hidden = true;
+        profileToggle?.setAttribute('aria-expanded', 'false');
+    }
+});
+
 content.addEventListener('click', async (event) => {
     const sectionButton = event.target.closest('[data-section]');
     const toggleButton = event.target.closest('[data-toggle-panel]');
     const archiveButton = event.target.closest('[data-archive-patient]');
     const completeButton = event.target.closest('[data-complete-appointment]');
+    const cancelButton = event.target.closest('[data-cancel-appointment]');
     const viewButton = event.target.closest('[data-view-patient]');
     const editButton = event.target.closest('[data-edit-patient]');
+    const editAppointmentButton = event.target.closest('[data-edit-appointment]');
 
     if (sectionButton) {
         loadSection(sectionButton.dataset.section);
@@ -92,6 +138,16 @@ content.addEventListener('click', async (event) => {
         if (result.ok) loadSection('appointments');
     }
 
+    if (cancelButton && confirm('Cancel this appointment?')) {
+        const data = new FormData();
+        data.append('csrf_token', window.dashboardConfig.csrfToken);
+        data.append('action', 'cancel_appointment');
+        data.append('id', cancelButton.dataset.cancelAppointment);
+        const result = await postAction(data);
+        alert(result.message);
+        if (result.ok) loadSection('appointments');
+    }
+
     if (viewButton) {
         const patient = JSON.parse(viewButton.dataset.viewPatient);
         alert(`${patient.patient_no}\n${patient.fullname}\nAge: ${patient.age}\nContact: ${patient.contact_number}\nEmail: ${patient.email || ''}\nAddress: ${patient.address || ''}`);
@@ -111,6 +167,18 @@ content.addEventListener('click', async (event) => {
             panel.hidden = false;
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+    }
+
+    if (editAppointmentButton) {
+        const appointment = JSON.parse(editAppointmentButton.dataset.editAppointment);
+        document.querySelector('#editAppointmentId').value = appointment.id || '';
+        document.querySelector('#editAppointmentPatient').value = appointment.patient_id || '';
+        document.querySelector('#editAppointmentService').value = appointment.service_type || '';
+        document.querySelector('#editAppointmentDate').value = appointment.appointment_date || '';
+        document.querySelector('#editAppointmentTime').value = (appointment.appointment_time || '').slice(0, 5);
+        document.querySelector('#editAppointmentStatus').value = appointment.status || 'pending';
+        document.querySelector('#editAppointmentNotes').value = appointment.notes || '';
+        document.querySelector('#editAppointmentId')?.closest('.dashboard-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 });
 
@@ -157,8 +225,90 @@ content.addEventListener('submit', async (event) => {
     }
 });
 
+profileForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = profileForm.querySelector('button[type="submit"]');
+    const data = new FormData(profileForm);
+    data.append('action', 'update_profile');
+
+    if (button) button.disabled = true;
+    const result = await postAction(data);
+    alert(result.message);
+    if (button) button.disabled = false;
+
+    if (!result.ok) {
+        return;
+    }
+
+    document.querySelectorAll('[data-profile-name]').forEach((item) => {
+        item.textContent = result.fullname || '';
+    });
+    document.querySelectorAll('[data-profile-email]').forEach((item) => {
+        item.textContent = result.email || '';
+    });
+
+    document.querySelectorAll('[data-profile-avatar], [data-profile-preview]').forEach((avatar) => {
+        avatar.textContent = '';
+
+        if (result.profilePhotoUrl) {
+            const image = document.createElement('img');
+            image.src = result.profilePhotoUrl;
+            image.alt = result.fullname || 'Profile';
+            avatar.appendChild(image);
+        } else {
+            avatar.textContent = result.initial || 'A';
+        }
+    });
+
+    if (profileModal) profileModal.hidden = true;
+});
+
+profileForm?.querySelector('input[name="profile_photo"]')?.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    const preview = document.querySelector('[data-profile-preview]');
+
+    if (!file || !preview) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+        preview.textContent = '';
+        const image = document.createElement('img');
+        image.src = String(reader.result);
+        image.alt = 'Profile preview';
+        preview.appendChild(image);
+    });
+    reader.readAsDataURL(file);
+});
+
+function updateLiveClock() {
+    const now = new Date();
+
+    if (liveTime) {
+        liveTime.textContent = now.toLocaleTimeString('en-PH', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
+    if (liveDate) {
+        liveDate.textContent = now.toLocaleDateString('en-PH', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    }
+}
+
+updateLiveClock();
+window.setInterval(updateLiveClock, 1000);
+
 loadSection(activeSection);
 
-sidebarToggle?.addEventListener('click', () => {
-    document.body.classList.toggle('sidebar-collapsed');
+sidebarToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        document.body.classList.toggle('sidebar-collapsed');
+    });
 });

@@ -45,6 +45,13 @@ if (!migrationColumnExists($pdo, 'users', 'mobile')) {
     echo "Mobile column already exists." . PHP_EOL;
 }
 
+if (!migrationColumnExists($pdo, 'users', 'profile_photo')) {
+    $pdo->exec('ALTER TABLE users ADD COLUMN profile_photo VARCHAR(255) NULL AFTER mobile');
+    echo "Added profile_photo column to users table." . PHP_EOL;
+} else {
+    echo "Profile photo column already exists." . PHP_EOL;
+}
+
 $pdo->exec(
     "CREATE TABLE IF NOT EXISTS password_reset_requests (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -107,7 +114,7 @@ $pdo->exec(
         patient_id INT UNSIGNED NOT NULL,
         appointment_date DATE NOT NULL,
         appointment_time TIME NOT NULL,
-        service_type VARCHAR(120) NOT NULL,
+        service VARCHAR(120) NOT NULL,
         status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
         notes TEXT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -120,5 +127,13 @@ $pdo->exec(
 );
 
 echo "Appointments table is ready." . PHP_EOL;
+
+if (!migrationColumnExists($pdo, 'appointments', 'service')) {
+    $pdo->exec("ALTER TABLE appointments ADD COLUMN service VARCHAR(120) NOT NULL DEFAULT '' AFTER appointment_time");
+    if (migrationColumnExists($pdo, 'appointments', 'service_type')) {
+        $pdo->exec("UPDATE appointments SET service = service_type WHERE service = ''");
+    }
+    echo "Added service column to appointments table." . PHP_EOL;
+}
 
 echo "Migration complete." . PHP_EOL;

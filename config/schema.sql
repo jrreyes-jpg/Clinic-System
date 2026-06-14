@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(60) NOT NULL UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
     mobile VARCHAR(30) NULL,
+    profile_photo VARCHAR(255) NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'receptionist') NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -51,7 +52,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     patient_id INT UNSIGNED NOT NULL,
     appointment_date DATE NOT NULL,
     appointment_time TIME NOT NULL,
-    service_type VARCHAR(120) NOT NULL,
+    service VARCHAR(120) NOT NULL,
     status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     notes TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

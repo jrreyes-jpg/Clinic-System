@@ -7,6 +7,8 @@ requireRole('admin');
 
 $user = currentUser();
 $csrfToken = generateCsrfToken();
+$profilePhoto = profilePhotoUrl($user, '../');
+$initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,6 +35,9 @@ $csrfToken = generateCsrfToken();
                     <strong>AC Ave.</strong>
                     <span>Dental Clinic</span>
                 </div>
+                <button class="sidebar-toggle sidebar-brand-toggle" type="button" aria-label="Expand sidebar" title="Expand sidebar" data-sidebar-toggle>
+                    <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+                </button>
             </div>
 
             <nav class="sidebar-nav" data-dashboard-nav>
@@ -71,7 +76,7 @@ $csrfToken = generateCsrfToken();
         <main class="admin-main spa-main">
             <header class="admin-topbar">
                 <div class="topbar-title-row">
-                <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" data-sidebar-toggle>
+                    <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" data-sidebar-toggle>
                         <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
                     </button>
                     <div>
@@ -81,15 +86,44 @@ $csrfToken = generateCsrfToken();
                     </div>
                 </div>
 
-                <section class="admin-profile" aria-label="Admin profile">
-                    <div class="profile-avatar" aria-hidden="true">
-                        <?= e(strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1))) ?>
+                <div class="topbar-actions">
+                    <div class="live-clock" aria-live="polite">
+                        <strong data-live-time>--:--</strong>
+                        <span data-live-date>Loading date...</span>
                     </div>
-                    <div>
-                        <strong><?= e($user['fullname'] ?? 'Admin') ?></strong>
-                        <span><?= e($user['email'] ?? 'Administrator') ?></span>
+
+                    <div class="profile-menu-wrap">
+                        <button class="admin-profile-button" type="button" aria-label="Open profile menu" aria-expanded="false" data-profile-toggle>
+                            <span class="profile-avatar profile-avatar-round" data-profile-avatar>
+                                <?php if ($profilePhoto !== ''): ?>
+                                    <img src="<?= e($profilePhoto) ?>" alt="<?= e($user['fullname'] ?? 'Admin') ?>">
+                                <?php else: ?>
+                                    <?= e($initial) ?>
+                                <?php endif; ?>
+                            </span>
+                            <span class="profile-caret"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+                        </button>
+
+                        <div class="profile-dropdown" data-profile-dropdown hidden>
+                            <div class="profile-dropdown-head">
+                                <span class="profile-avatar profile-avatar-round">
+                                    <?php if ($profilePhoto !== ''): ?>
+                                        <img src="<?= e($profilePhoto) ?>" alt="<?= e($user['fullname'] ?? 'Admin') ?>">
+                                    <?php else: ?>
+                                        <?= e($initial) ?>
+                                    <?php endif; ?>
+                                </span>
+                                <div>
+                                    <strong data-profile-name><?= e($user['fullname'] ?? 'Admin') ?></strong>
+                                    <span data-profile-email><?= e($user['email'] ?? 'Administrator') ?></span>
+                                </div>
+                            </div>
+                            <button type="button" data-profile-modal-open><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Edit Profile</button>
+                            <button type="button" data-section="settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> Settings</button>
+                            <a href="../logout.php"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Logout</a>
+                        </div>
                     </div>
-                </section>
+                </div>
             </header>
 
             <section class="spa-content is-loading" id="dashboardContent" aria-live="polite">
@@ -99,6 +133,46 @@ $csrfToken = generateCsrfToken();
                 </div>
             </section>
         </main>
+
+        <div class="profile-modal-backdrop" data-profile-modal hidden>
+            <section class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+                <div class="profile-modal-header">
+                    <div>
+                        <p class="eyebrow">Account</p>
+                        <h2 id="profileModalTitle">Edit Profile</h2>
+                    </div>
+                    <button class="icon-button" type="button" aria-label="Close profile modal" data-profile-modal-close>
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <form class="admin-form profile-form" data-profile-form enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <div class="profile-photo-field">
+                        <span class="profile-avatar profile-avatar-large" data-profile-preview>
+                            <?php if ($profilePhoto !== ''): ?>
+                                <img src="<?= e($profilePhoto) ?>" alt="<?= e($user['fullname'] ?? 'Admin') ?>">
+                            <?php else: ?>
+                                <?= e($initial) ?>
+                            <?php endif; ?>
+                        </span>
+                        <div>
+                            <label for="profile_photo">Profile Picture</label>
+                            <input type="file" id="profile_photo" name="profile_photo" accept="image/jpeg,image/png,image/webp">
+                            <p class="muted">JPG, PNG, or WEBP only.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label for="profile_fullname">Full Name</label><input id="profile_fullname" name="fullname" value="<?= e($user['fullname'] ?? '') ?>" required></div>
+                        <div class="form-group"><label for="profile_email">Email</label><input type="email" id="profile_email" name="email" value="<?= e($user['email'] ?? '') ?>" required></div>
+                        <div class="form-group"><label for="profile_mobile">Mobile</label><input id="profile_mobile" name="mobile" value="<?= e($user['mobile'] ?? '') ?>"></div>
+                    </div>
+
+                    <button class="button" type="submit">Save Profile</button>
+                </form>
+            </section>
+        </div>
     </div>
 </body>
 </html>

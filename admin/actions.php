@@ -21,6 +21,7 @@ if (!verifyCsrfToken($_POST['csrf_token'] ?? null)) {
 }
 
 $action = (string) ($_POST['action'] ?? '');
+$currentUser = currentUser();
 
 try {
     if ($action === 'create_patient') {
@@ -85,6 +86,29 @@ try {
         jsonResponse(true, 'Appointment marked as completed.');
     }
 
+    if ($action === 'cancel_appointment') {
+        updateAppointmentStatus((int) ($_POST['id'] ?? 0), 'cancelled');
+        jsonResponse(true, 'Appointment cancelled successfully.');
+    }
+
+    if ($action === 'update_appointment') {
+        $appointmentId = (int) ($_POST['id'] ?? 0);
+        $data = [
+            'patient_id' => (int) ($_POST['patient_id'] ?? 0),
+            'appointment_date' => trim((string) ($_POST['appointment_date'] ?? '')),
+            'appointment_time' => trim((string) ($_POST['appointment_time'] ?? '')),
+            'service_type' => trim((string) ($_POST['service_type'] ?? '')),
+            'status' => (string) ($_POST['status'] ?? 'pending'),
+            'notes' => trim((string) ($_POST['notes'] ?? '')),
+        ];
+        $errors = validateAppointmentData($data);
+        if ($appointmentId <= 0 || $errors !== []) {
+            jsonResponse(false, $errors === [] ? 'Please select an appointment to update.' : implode(' ', $errors));
+        }
+        updateAppointment($appointmentId, $data);
+        jsonResponse(true, 'Appointment updated successfully.');
+    }
+
     if ($action === 'create_user') {
         $fullname = trim((string) ($_POST['fullname'] ?? ''));
         $username = trim((string) ($_POST['username'] ?? ''));
@@ -135,6 +159,64 @@ try {
 
         jsonResponse(true, 'Clinic logo updated successfully.', [
             'logoUrl' => clinicLogoUrl('../'),
+        ]);
+    }
+
+    if ($action === 'update_profile') {
+        $fullname = trim((string) ($_POST['fullname'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $mobile = trim((string) ($_POST['mobile'] ?? ''));
+        $profilePhoto = '';
+
+        if ($fullname === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            jsonResponse(false, 'Please enter your full name and a valid email address.');
+        }
+
+        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+            if ($_FILES['profile_photo']['error'] !== UPLOAD_ERR_OK) {
+                jsonResponse(false, 'Profile photo upload failed. Please choose another image.');
+            }
+
+            $tmpPath = (string) $_FILES['profile_photo']['tmp_name'];
+            $imageInfo = getimagesize($tmpPath);
+            $allowedTypes = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+            ];
+
+            if ($imageInfo === false || !isset($allowedTypes[$imageInfo['mime']])) {
+                jsonResponse(false, 'Profile photo must be a JPG, PNG, or WEBP image.');
+            }
+
+            $targetDir = __DIR__ . '/../assets/img';
+            $extension = $allowedTypes[$imageInfo['mime']];
+            $filename = 'profile-' . (int) ($currentUser['id'] ?? 0) . '.' . $extension;
+            $targetPath = $targetDir . '/' . $filename;
+
+            foreach (['jpg', 'png', 'webp'] as $oldExtension) {
+                $oldPath = $targetDir . '/profile-' . (int) ($currentUser['id'] ?? 0) . '.' . $oldExtension;
+                if ($oldPath !== $targetPath && is_file($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+
+            if (!move_uploaded_file($tmpPath, $targetPath)) {
+                jsonResponse(false, 'Profile photo could not be saved.');
+            }
+
+            $profilePhoto = 'assets/img/' . $filename;
+        }
+
+        updateCurrentUserProfile((int) ($currentUser['id'] ?? 0), $fullname, $email, $mobile, $profilePhoto);
+        $updatedUser = currentUser();
+
+        jsonResponse(true, 'Profile updated successfully.', [
+            'fullname' => $updatedUser['fullname'] ?? $fullname,
+            'email' => $updatedUser['email'] ?? $email,
+            'mobile' => $updatedUser['mobile'] ?? $mobile,
+            'profilePhotoUrl' => profilePhotoUrl($updatedUser, '../'),
+            'initial' => strtoupper(substr($fullname, 0, 1)),
         ]);
     }
 } catch (PDOException $exception) {

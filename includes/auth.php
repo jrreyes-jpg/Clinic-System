@@ -64,6 +64,8 @@ function currentUser(): ?array
         'fullname' => $_SESSION['fullname'] ?? '',
         'username' => $_SESSION['username'],
         'email' => $_SESSION['email'] ?? '',
+        'mobile' => $_SESSION['mobile'] ?? '',
+        'profile_photo' => $_SESSION['profile_photo'] ?? '',
         'role' => $_SESSION['role'],
     ];
 }
@@ -152,13 +154,20 @@ function usersMobileSelect(): string
     return columnExists('users', 'mobile') ? 'mobile' : '"" AS mobile';
 }
 
+function usersProfilePhotoSelect(): string
+{
+    return columnExists('users', 'profile_photo') ? 'profile_photo' : '"" AS profile_photo';
+}
+
 function findUserByUsername(string $username): ?array
 {
     $pdo = getDatabaseConnection();
     $emailSelect = usersEmailSelect();
+    $mobileSelect = usersMobileSelect();
+    $profilePhotoSelect = usersProfilePhotoSelect();
 
     $statement = $pdo->prepare(
-        "SELECT id, fullname, username, {$emailSelect}, password, role FROM users WHERE username = :username LIMIT 1"
+        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, {$profilePhotoSelect}, password, role FROM users WHERE username = :username LIMIT 1"
     );
     $statement->execute(['username' => $username]);
 
@@ -172,10 +181,12 @@ function findUserByUsernameOrEmail(string $login): ?array
     $pdo = getDatabaseConnection();
     $emailExists = columnExists('users', 'email');
     $emailSelect = $emailExists ? 'email' : '"" AS email';
+    $mobileSelect = usersMobileSelect();
+    $profilePhotoSelect = usersProfilePhotoSelect();
     $whereClause = $emailExists ? 'username = :username OR email = :email' : 'username = :username';
 
     $statement = $pdo->prepare(
-        "SELECT id, fullname, username, {$emailSelect}, password, role
+        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, {$profilePhotoSelect}, password, role
          FROM users
          WHERE {$whereClause}
          LIMIT 1"
@@ -198,9 +209,10 @@ function listUsers(): array
     $pdo = getDatabaseConnection();
     $emailSelect = usersEmailSelect();
     $mobileSelect = usersMobileSelect();
+    $profilePhotoSelect = usersProfilePhotoSelect();
 
     $statement = $pdo->query(
-        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, role, created_at
+        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, {$profilePhotoSelect}, role, created_at
          FROM users
          ORDER BY role ASC, fullname ASC"
     );
@@ -213,9 +225,10 @@ function listReceptionists(): array
     $pdo = getDatabaseConnection();
     $emailSelect = usersEmailSelect();
     $mobileSelect = usersMobileSelect();
+    $profilePhotoSelect = usersProfilePhotoSelect();
 
     $statement = $pdo->query(
-        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, role, created_at
+        "SELECT id, fullname, username, {$emailSelect}, {$mobileSelect}, {$profilePhotoSelect}, role, created_at
          FROM users
          WHERE role = 'receptionist'
          ORDER BY fullname ASC"
@@ -289,6 +302,51 @@ function updateReceptionist(int $userId, string $fullname, string $username, str
         'email' => $email,
         'id' => $userId,
     ]);
+}
+
+function profilePhotoUrl(?array $user, string $prefix = ''): string
+{
+    $photo = trim((string) ($user['profile_photo'] ?? ''));
+
+    if ($photo !== '' && is_file(__DIR__ . '/../' . $photo)) {
+        return $prefix . $photo . '?v=' . filemtime(__DIR__ . '/../' . $photo);
+    }
+
+    return '';
+}
+
+function updateCurrentUserProfile(int $userId, string $fullname, string $email, string $mobile, string $profilePhoto = ''): void
+{
+    $pdo = getDatabaseConnection();
+    $hasMobile = columnExists('users', 'mobile');
+    $hasProfilePhoto = columnExists('users', 'profile_photo');
+    $sets = ['fullname = :fullname', 'email = :email'];
+    $parameters = [
+        'fullname' => $fullname,
+        'email' => $email,
+        'id' => $userId,
+    ];
+
+    if ($hasMobile) {
+        $sets[] = 'mobile = :mobile';
+        $parameters['mobile'] = $mobile;
+    }
+
+    if ($hasProfilePhoto && $profilePhoto !== '') {
+        $sets[] = 'profile_photo = :profile_photo';
+        $parameters['profile_photo'] = $profilePhoto;
+    }
+
+    $statement = $pdo->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = :id');
+    $statement->execute($parameters);
+
+    $_SESSION['fullname'] = $fullname;
+    $_SESSION['email'] = $email;
+    $_SESSION['mobile'] = $mobile;
+
+    if ($profilePhoto !== '') {
+        $_SESSION['profile_photo'] = $profilePhoto;
+    }
 }
 
 function resetUserPassword(int $userId, string $newPassword, bool $completePendingRequests = true): void
@@ -454,6 +512,8 @@ function createLoginSession(array $user): void
     $_SESSION['fullname'] = $user['fullname'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['email'] = $user['email'] ?? '';
+    $_SESSION['mobile'] = $user['mobile'] ?? '';
+    $_SESSION['profile_photo'] = $user['profile_photo'] ?? '';
     $_SESSION['role'] = $user['role'];
 }
 
@@ -735,23 +795,49 @@ function countAppointmentsToday(): int
     return 0;
 }
 
-function listAppointments(string $date = ''): array
+function countAppointmentsByStatus(string $status): int
+{
+    if (!tableExists('appointments')) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare('SELECT COUNT(*) FROM appointments WHERE status = :status');
+    $statement->execute(['status' => $status]);
+
+    return (int) $statement->fetchColumn();
+}
+
+function appointmentServiceColumn(): string
+{
+    return columnExists('appointments', 'service') ? 'service' : 'service_type';
+}
+
+function listAppointments(string $date = '', string $status = ''): array
 {
     if (!tableExists('appointments')) {
         return [];
     }
 
     $pdo = getDatabaseConnection();
-    $where = '';
+    $conditions = [];
     $parameters = [];
 
     if ($date !== '') {
-        $where = 'WHERE a.appointment_date = :appointment_date';
+        $conditions[] = 'a.appointment_date = :appointment_date';
         $parameters['appointment_date'] = $date;
     }
 
+    if ($status !== '' && in_array($status, ['pending', 'confirmed', 'completed', 'cancelled'], true)) {
+        $conditions[] = 'a.status = :status';
+        $parameters['status'] = $status;
+    }
+
+    $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
+    $serviceColumn = appointmentServiceColumn();
+
     $statement = $pdo->prepare(
-        "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.service_type, a.status, a.notes, a.created_at,
+        "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status, a.notes, a.created_at,
                 p.patient_no, p.fullname AS patient_name, p.contact_number
          FROM appointments a
          INNER JOIN patients p ON p.id = a.patient_id
@@ -763,13 +849,35 @@ function listAppointments(string $date = ''): array
     return $statement->fetchAll();
 }
 
+function listAppointmentsForMonth(string $month): array
+{
+    if (!preg_match('/^\d{4}-\d{2}$/', $month) || !tableExists('appointments')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $serviceColumn = appointmentServiceColumn();
+    $statement = $pdo->prepare(
+        "SELECT a.id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status,
+                p.fullname AS patient_name
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         WHERE DATE_FORMAT(a.appointment_date, '%Y-%m') = :month
+         ORDER BY a.appointment_date ASC, a.appointment_time ASC"
+    );
+    $statement->execute(['month' => $month]);
+
+    return $statement->fetchAll();
+}
+
 function createAppointment(array $data): void
 {
     $pdo = getDatabaseConnection();
+    $serviceColumn = appointmentServiceColumn();
 
     $statement = $pdo->prepare(
-        'INSERT INTO appointments (patient_id, appointment_date, appointment_time, service_type, status, notes)
-         VALUES (:patient_id, :appointment_date, :appointment_time, :service_type, :status, :notes)'
+        "INSERT INTO appointments (patient_id, appointment_date, appointment_time, {$serviceColumn}, status, notes)
+         VALUES (:patient_id, :appointment_date, :appointment_time, :service_type, :status, :notes)"
     );
     $statement->execute([
         'patient_id' => (int) $data['patient_id'],
@@ -778,6 +886,32 @@ function createAppointment(array $data): void
         'service_type' => $data['service_type'],
         'status' => $data['status'],
         'notes' => $data['notes'],
+    ]);
+}
+
+function updateAppointment(int $appointmentId, array $data): void
+{
+    $pdo = getDatabaseConnection();
+    $serviceColumn = appointmentServiceColumn();
+
+    $statement = $pdo->prepare(
+        "UPDATE appointments
+         SET patient_id = :patient_id,
+             appointment_date = :appointment_date,
+             appointment_time = :appointment_time,
+             {$serviceColumn} = :service_type,
+             status = :status,
+             notes = :notes
+         WHERE id = :id"
+    );
+    $statement->execute([
+        'patient_id' => (int) $data['patient_id'],
+        'appointment_date' => $data['appointment_date'],
+        'appointment_time' => $data['appointment_time'],
+        'service_type' => $data['service_type'],
+        'status' => $data['status'],
+        'notes' => $data['notes'],
+        'id' => $appointmentId,
     ]);
 }
 
@@ -867,8 +1001,9 @@ function recentDashboardActivities(int $limit = 5): array
     }
 
     if (tableExists('appointments')) {
+        $serviceColumn = appointmentServiceColumn();
         $statement = $pdo->query(
-            "SELECT p.fullname AS title, CONCAT(a.service_type, ' · ', a.status) AS meta, a.created_at
+            "SELECT p.fullname AS title, CONCAT(a.{$serviceColumn}, ' - ', a.status) AS meta, a.created_at
              FROM appointments a
              INNER JOIN patients p ON p.id = a.patient_id
              ORDER BY a.created_at DESC

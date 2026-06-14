@@ -659,7 +659,7 @@ th {
 
 .search-bar {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) auto auto;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 10px;
     align-items: center;
 }
@@ -1230,9 +1230,13 @@ th {
 .sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     padding-bottom: 18px;
     border-bottom: 1px solid rgba(169, 148, 0, 0.22);
+}
+
+.sidebar-brand-toggle {
+    display: none;
 }
 
 .sidebar-brand img {
@@ -1347,8 +1351,17 @@ th {
 }
 
 .sidebar-collapsed .sidebar-brand img {
-    width: 48px;
-    height: 48px;
+    display: none;
+}
+
+.sidebar-collapsed .sidebar-brand {
+    justify-content: center;
+    padding-bottom: 16px;
+}
+
+.sidebar-collapsed .sidebar-brand-toggle {
+    display: grid;
+    margin-top: 4px;
 }
 
 .sidebar-collapsed .sidebar-nav a,
@@ -1399,7 +1412,7 @@ th {
 .topbar-title-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 18px;
     min-width: 0;
 }
 
@@ -1411,25 +1424,55 @@ th {
     font-size: clamp(1.8rem, 3vw, 2.5rem);
 }
 
-.admin-profile {
+.topbar-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 240px;
-    padding: 12px;
+    gap: 14px;
+    margin-left: auto;
+}
+
+.live-clock {
+    display: grid;
+    gap: 2px;
+    min-width: 150px;
+    padding: 10px 14px;
+    border: 1px solid rgba(238, 228, 120, 0.62);
     border-radius: 16px;
     background: #fffdf0;
+    text-align: right;
 }
 
-.admin-profile strong,
-.admin-profile span {
-    display: block;
+.live-clock strong {
+    color: #111111;
+    font-size: 1rem;
 }
 
-.admin-profile span {
+.live-clock span {
     color: var(--muted);
-    font-size: 0.88rem;
-    overflow-wrap: anywhere;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.profile-menu-wrap {
+    position: relative;
+}
+
+.admin-profile-button {
+    position: relative;
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.admin-profile-button:focus-visible {
+    outline: 3px solid rgba(231, 220, 53, 0.48);
+    outline-offset: 3px;
 }
 
 .profile-avatar {
@@ -1438,10 +1481,170 @@ th {
     height: 48px;
     place-items: center;
     flex: 0 0 48px;
+    overflow: hidden;
     border-radius: 14px;
     color: #111111;
     background: linear-gradient(135deg, #fff37b, #e7dc35);
     font-weight: 900;
+}
+
+.profile-avatar-round {
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 10px 24px rgba(94, 86, 18, 0.16);
+}
+
+.profile-avatar-large {
+    width: 82px;
+    height: 82px;
+    flex-basis: 82px;
+    border-radius: 50%;
+    font-size: 1.6rem;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-caret {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    color: #111111;
+    background: #edf0f4;
+    font-size: 0.66rem;
+    box-shadow: 0 8px 18px rgba(17, 17, 17, 0.14);
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 35;
+    display: grid;
+    gap: 6px;
+    width: min(320px, 82vw);
+    padding: 12px;
+    border: 1px solid rgba(238, 228, 120, 0.7);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 70px rgba(94, 86, 18, 0.18);
+}
+
+.profile-dropdown[hidden] {
+    display: none;
+}
+
+.profile-dropdown-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 14px;
+    background: #fffdf0;
+}
+
+.profile-dropdown strong,
+.profile-dropdown span {
+    display: block;
+}
+
+.profile-dropdown span {
+    color: var(--muted);
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+}
+
+.profile-dropdown button,
+.profile-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 12px;
+    color: #111111;
+    background: transparent;
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.profile-dropdown button:hover,
+.profile-dropdown a:hover {
+    background: #fff7b8;
+}
+
+.profile-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(17, 17, 17, 0.34);
+    backdrop-filter: blur(8px);
+}
+
+.profile-modal-backdrop[hidden] {
+    display: none;
+}
+
+.profile-modal {
+    width: min(620px, 100%);
+    border: 1px solid rgba(238, 228, 120, 0.72);
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 32px 90px rgba(17, 17, 17, 0.24);
+    overflow: hidden;
+}
+
+.profile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 20px 22px;
+    border-bottom: 1px solid rgba(238, 228, 120, 0.58);
+    background: linear-gradient(135deg, #fffef8, #fff8b8);
+}
+
+.profile-modal-header h2 {
+    font-size: 1.35rem;
+}
+
+.icon-button {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(169, 148, 0, 0.24);
+    border-radius: 12px;
+    color: #111111;
+    background: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+}
+
+.profile-form {
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+}
+
+.profile-photo-field {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .dashboard-stat-grid {
@@ -1595,6 +1798,104 @@ th {
     margin-bottom: 14px;
 }
 
+.appointment-toolbar {
+    padding: 16px;
+}
+
+.appointment-toolbar .spa-search {
+    margin-bottom: 0;
+}
+
+.appointment-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+    gap: 16px;
+}
+
+.appointment-table {
+    min-width: 980px;
+}
+
+.status-badge,
+.calendar-pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.status-pending {
+    color: #5f4b00;
+    background: #fff3a3;
+}
+
+.status-confirmed {
+    color: #075985;
+    background: #dff5ff;
+}
+
+.status-completed {
+    color: #17623a;
+    background: #daf8e7;
+}
+
+.status-cancelled {
+    color: #8a1f1f;
+    background: #ffe1e1;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.calendar-day-name {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.calendar-cell {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-height: 104px;
+    padding: 10px;
+    border: 1px solid rgba(238, 228, 120, 0.66);
+    border-radius: 14px;
+    background: #fffef7;
+    overflow: hidden;
+}
+
+.calendar-cell strong {
+    font-size: 0.92rem;
+}
+
+.calendar-cell.is-muted {
+    opacity: 0.46;
+}
+
+.calendar-pill {
+    justify-content: flex-start;
+    min-height: 24px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-cell small {
+    color: var(--muted);
+    font-weight: 800;
+}
+
 .quick-action-list a:hover {
     background: var(--primary-soft);
     transform: translateX(3px);
@@ -1629,7 +1930,8 @@ th {
     }
 
     .dashboard-stat-grid,
-    .admin-content-grid {
+    .admin-content-grid,
+    .appointment-layout {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -1640,15 +1942,30 @@ th {
     }
 
     .admin-topbar,
-    .admin-profile {
+    .topbar-actions {
         align-items: flex-start;
         flex-direction: column;
     }
 
+    .topbar-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .live-clock {
+        width: 100%;
+        text-align: left;
+    }
+
     .sidebar-nav,
     .dashboard-stat-grid,
-    .admin-content-grid {
+    .admin-content-grid,
+    .appointment-layout {
         grid-template-columns: 1fr;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .activity-item {
