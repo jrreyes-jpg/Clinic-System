@@ -53,6 +53,14 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
                     <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
                     <span>Appointments</span>
                 </button>
+                <button type="button" data-section="billing">
+                    <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i>
+                    <span>Billing</span>
+                </button>
+                <button type="button" data-section="services">
+                    <i class="fa-solid fa-tooth" aria-hidden="true"></i>
+                    <span>Services</span>
+                </button>
                 <button type="button" data-section="records">
                     <i class="fa-solid fa-notes-medical" aria-hidden="true"></i>
                     <span>Dental Records</span>

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/auth.php';
 
 requireRole('receptionist');
 $user = currentUser();
+$services = listServices();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,6 +49,39 @@ $user = currentUser();
             <div class="dashboard-actions">
                 <a class="button" href="../patients/index.php">Patients</a>
                 <a class="button button-secondary" href="../logout.php">Logout</a>
+            </div>
+        </section>
+
+        <section class="dashboard-panel">
+            <div class="card-header">
+                <div>
+                    <h2>Available Services</h2>
+                    <p class="muted"><?= count($services) ?> service<?= count($services) === 1 ? '' : 's' ?></p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="compact-table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Price</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($services === []): ?>
+                            <tr><td colspan="3">No services found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($services as $service): ?>
+                                <tr>
+                                    <td><?= e($service['service_name']) ?></td>
+                                    <td><?= e(number_format((float) $service['price'], 2)) ?></td>
+                                    <td><?= e($service['description'] ?? '') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </section>
     </main>

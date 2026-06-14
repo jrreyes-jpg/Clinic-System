@@ -714,6 +714,237 @@ function updatePatient(int $patientId, array $data): void
     ]);
 }
 
+function listServices(string $search = ''): array
+{
+    if (!tableExists('services')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $where = '';
+    $parameters = [];
+
+    if ($search !== '') {
+        $where = 'WHERE service_name LIKE :search OR description LIKE :search';
+        $parameters['search'] = '%' . $search . '%';
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT id, service_name, price, description, created_at
+         FROM services
+         {$where}
+         ORDER BY service_name ASC"
+    );
+    $statement->execute($parameters);
+
+    return $statement->fetchAll();
+}
+
+function findServiceById(int $serviceId): ?array
+{
+    if (!tableExists('services')) {
+        return null;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT id, service_name, price, description, created_at FROM services WHERE id = :id LIMIT 1'
+    );
+    $statement->execute(['id' => $serviceId]);
+
+    $service = $statement->fetch();
+
+    return $service ?: null;
+}
+
+function createService(array $data): int
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'INSERT INTO services (service_name, price, description)
+         VALUES (:service_name, :price, :description)'
+    );
+    $statement->execute([
+        'service_name' => $data['service_name'],
+        'price' => number_format((float) $data['price'], 2, '.', ''),
+        'description' => $data['description'],
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
+function updateService(int $serviceId, array $data): void
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'UPDATE services
+         SET service_name = :service_name,
+             price = :price,
+             description = :description
+         WHERE id = :id'
+    );
+    $statement->execute([
+        'service_name' => $data['service_name'],
+        'price' => number_format((float) $data['price'], 2, '.', ''),
+        'description' => $data['description'],
+        'id' => $serviceId,
+    ]);
+}
+
+function validateServiceData(array $data): array
+{
+    $errors = [];
+
+    if (trim((string) ($data['service_name'] ?? '')) === '') {
+        $errors[] = 'Service name is required.';
+    }
+
+    $price = trim((string) ($data['price'] ?? ''));
+    if ($price === '' || !is_numeric($price) || (float) $price < 0) {
+        $errors[] = 'Please enter a valid service price.';
+    }
+
+    return $errors;
+}
+
+function listBills(string $search = ''): array
+{
+    if (!tableExists('bills')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $where = '';
+    $parameters = [];
+
+    if ($search !== '') {
+        $where = 'WHERE p.fullname LIKE :search OR s.service_name LIKE :search OR b.payment_status LIKE :search';
+        $parameters['search'] = '%' . $search . '%';
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT b.id, b.patient_id, b.service_id, b.amount, b.payment_status, b.payment_date, b.created_at,
+                p.fullname AS patient_name, p.patient_no, s.service_name
+         FROM bills b
+         INNER JOIN patients p ON p.id = b.patient_id
+         INNER JOIN services s ON s.id = b.service_id
+         {$where}
+         ORDER BY b.created_at DESC"
+    );
+    $statement->execute($parameters);
+
+    return $statement->fetchAll();
+}
+
+function getBillById(int $billId): ?array
+{
+    if (!tableExists('bills')) {
+        return null;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare(
+        'SELECT b.id, b.patient_id, b.service_id, b.amount, b.payment_status, b.payment_date, b.created_at,
+                p.fullname AS patient_name, p.patient_no, p.contact_number, p.email, s.service_name, s.price AS service_price, s.description AS service_description
+         FROM bills b
+         INNER JOIN patients p ON p.id = b.patient_id
+         INNER JOIN services s ON s.id = b.service_id
+         WHERE b.id = :id
+         LIMIT 1'
+    );
+    $statement->execute(['id' => $billId]);
+
+    $bill = $statement->fetch();
+    return $bill ?: null;
+}
+
+function createBill(array $data): int
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'INSERT INTO bills (patient_id, service_id, amount, payment_status, payment_date)
+         VALUES (:patient_id, :service_id, :amount, :payment_status, :payment_date)'
+    );
+    $statement->execute([
+        'patient_id' => $data['patient_id'],
+        'service_id' => $data['service_id'],
+        'amount' => number_format((float) $data['amount'], 2, '.', ''),
+        'payment_status' => $data['payment_status'],
+        'payment_date' => $data['payment_date'] !== '' ? $data['payment_date'] : null,
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
+function recordPayment(int $billId, array $data): void
+{
+    $pdo = getDatabaseConnection();
+
+    $statement = $pdo->prepare(
+        'UPDATE bills
+         SET payment_status = :payment_status,
+             payment_date = :payment_date
+         WHERE id = :id'
+    );
+    $statement->execute([
+        'payment_status' => $data['payment_status'],
+        'payment_date' => $data['payment_date'] !== '' ? $data['payment_date'] : null,
+        'id' => $billId,
+    ]);
+}
+
+function validateBillData(array $data): array
+{
+    $errors = [];
+    $validStatuses = ['Paid', 'Unpaid', 'Partial'];
+
+    if ($data['patient_id'] <= 0) {
+        $errors[] = 'Please select a patient.';
+    }
+
+    if ($data['service_id'] <= 0) {
+        $errors[] = 'Please select a service.';
+    }
+
+    $amount = trim((string) ($data['amount'] ?? ''));
+    if ($amount === '' || !is_numeric($amount) || (float) $amount < 0) {
+        $errors[] = 'Please enter a valid bill amount.';
+    }
+
+    if (!in_array($data['payment_status'], $validStatuses, true)) {
+        $errors[] = 'Please select a valid payment status.';
+    }
+
+    $paymentDate = trim((string) ($data['payment_date'] ?? ''));
+    if ($paymentDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $paymentDate)) {
+        $errors[] = 'Please enter a valid payment date.';
+    }
+
+    return $errors;
+}
+
+function validatePaymentData(array $data): array
+{
+    $errors = [];
+    $validStatuses = ['Paid', 'Unpaid', 'Partial'];
+
+    if (!in_array($data['payment_status'], $validStatuses, true)) {
+        $errors[] = 'Please select a valid payment status.';
+    }
+
+    $paymentDate = trim((string) ($data['payment_date'] ?? ''));
+    if ($paymentDate === '') {
+        $errors[] = 'Please enter the payment date.';
+    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $paymentDate)) {
+        $errors[] = 'Please enter a valid payment date.';
+    }
+
+    return $errors;
+}
+
 function archivePatient(int $patientId): void
 {
     $pdo = getDatabaseConnection();

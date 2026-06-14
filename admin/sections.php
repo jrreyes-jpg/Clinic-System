@@ -238,6 +238,134 @@ if ($section === 'appointments') {
     exit;
 }
 
+if ($section === 'services') {
+    $search = trim((string) ($_GET['search'] ?? ''));
+    $services = listServices($search);
+    sectionHeader('Services', 'Create, update, and price clinic treatments.');
+    ?>
+    <section class="dashboard-card">
+        <div class="card-header">
+            <div><h2>Services</h2><p class="muted"><?= count($services) ?> service<?= count($services) === 1 ? '' : 's' ?></p></div>
+            <button class="button button-small" type="button" data-toggle-panel="serviceCreatePanel"><i class="fa-solid fa-plus"></i> Add Service</button>
+        </div>
+        <form class="search-bar spa-search" data-section-search="services">
+            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search services or descriptions">
+            <button class="button button-small" type="submit">Search</button>
+        </form>
+        <div class="inline-panel" id="serviceCreatePanel" hidden>
+            <form class="admin-form ajax-form" data-action="create_service">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <div class="form-grid">
+                    <div class="form-group"><label>Service Name</label><input name="service_name" required></div>
+                    <div class="form-group"><label>Price</label><input type="number" name="price" step="0.01" min="0" required></div>
+                    <div class="form-group form-group-wide"><label>Description</label><textarea name="description" rows="3"></textarea></div>
+                </div>
+                <button class="button" type="submit">Save Service</button>
+            </form>
+        </div>
+        <div class="inline-panel" id="serviceEditPanel" hidden>
+            <form class="admin-form ajax-form" data-action="update_service">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="id" id="editServiceId">
+                <div class="form-grid">
+                    <div class="form-group"><label>Service Name</label><input name="service_name" id="editServiceName" required></div>
+                    <div class="form-group"><label>Price</label><input type="number" name="price" id="editServicePrice" step="0.01" min="0" required></div>
+                    <div class="form-group form-group-wide"><label>Description</label><textarea name="description" id="editServiceDescription" rows="3"></textarea></div>
+                </div>
+                <button class="button" type="submit">Update Service</button>
+            </form>
+        </div>
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead><tr><th>Service</th><th>Price</th><th>Description</th><th>Actions</th></tr></thead>
+                <tbody>
+                    <?php if ($services === []): ?><tr><td colspan="4">No services found.</td></tr><?php endif; ?>
+                    <?php foreach ($services as $service): ?>
+                        <tr>
+                            <td><?= e($service['service_name']) ?></td>
+                            <td><?= e(number_format((float) $service['price'], 2)) ?></td>
+                            <td><?= e($service['description'] ?? '') ?></td>
+                            <td><div class="row-actions"><button class="button button-small" type="button" data-edit-service='<?= e(json_encode($service)) ?>'>Edit</button></div></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <?php
+    exit;
+}
+
+if ($section === 'billing') {
+    $search = trim((string) ($_GET['search'] ?? ''));
+    $patients = listPatients();
+    $services = listServices();
+    $bills = listBills($search);
+    $statuses = ['Unpaid', 'Partial', 'Paid'];
+    sectionHeader('Billing', 'Generate bills, record payments, and print receipts.');
+    ?>
+    <section class="dashboard-card">
+        <div class="card-header">
+            <div><h2>Billing</h2><p class="muted"><?= count($bills) ?> bill<?= count($bills) === 1 ? '' : 's' ?></p></div>
+        </div>
+        <form class="search-bar spa-search" data-section-search="billing">
+            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search patient, service, or payment status">
+            <button class="button button-small" type="submit">Search</button>
+        </form>
+        <div class="dashboard-grid">
+            <article class="dashboard-card">
+                <div class="card-header"><div><h3>Generate Bill</h3><p class="muted">Create a new billing record for a patient.</p></div></div>
+                <form class="admin-form ajax-form" data-action="create_bill">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <div class="form-grid">
+                        <div class="form-group"><label>Patient</label><select name="patient_id" id="billingPatient" required><option value="">Select patient</option><?php foreach ($patients as $patient): ?><option value="<?= e((string) $patient['id']) ?>"><?= e($patient['patient_no'] . ' - ' . $patient['fullname']) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Service</label><select name="service_id" id="billingService" required><option value="">Select service</option><?php foreach ($services as $service): ?><option value="<?= e((string) $service['id']) ?>" data-price="<?= e(number_format((float) $service['price'], 2, '.', '')) ?>"><?= e($service['service_name']) ?> (<?= e(number_format((float) $service['price'], 2)) ?>)</option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0" name="amount" id="billingAmount" required></div>
+                        <div class="form-group"><label>Status</label><select name="payment_status" required><?php foreach ($statuses as $status): ?><option value="<?= e($status) ?>" <?= $status === 'Unpaid' ? 'selected' : '' ?>><?= e($status) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Payment Date</label><input type="date" name="payment_date" value="<?= e(date('Y-m-d')) ?>"></div>
+                    </div>
+                    <button class="button" type="submit">Generate Bill</button>
+                </form>
+            </article>
+
+            <article class="dashboard-card">
+                <div class="card-header"><div><h3>Record Payment</h3><p class="muted">Update payment status for an existing bill.</p></div></div>
+                <form class="admin-form ajax-form" data-action="record_payment">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <div class="form-grid">
+                        <div class="form-group"><label>Bill</label><select name="bill_id" required><option value="">Select bill</option><?php foreach ($bills as $bill): ?><option value="<?= e((string) $bill['id']) ?>">#<?= e($bill['id']) ?> - <?= e($bill['patient_name']) ?> / <?= e($bill['service_name']) ?> (<?= e($bill['payment_status']) ?>)</option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Status</label><select name="payment_status" required><?php foreach ($statuses as $status): ?><option value="<?= e($status) ?>"><?= e($status) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Payment Date</label><input type="date" name="payment_date" value="<?= e(date('Y-m-d')) ?>"></div>
+                    </div>
+                    <button class="button" type="submit">Record Payment</button>
+                </form>
+            </article>
+        </div>
+
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead><tr><th>Bill</th><th>Patient</th><th>Service</th><th>Amount</th><th>Status</th><th>Payment Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                    <?php if ($bills === []): ?><tr><td colspan="7">No billing records found.</td></tr><?php endif; ?>
+                    <?php foreach ($bills as $bill): ?>
+                        <tr>
+                            <td>#<?= e((string) $bill['id']) ?></td>
+                            <td><?= e($bill['patient_name']) ?></td>
+                            <td><?= e($bill['service_name']) ?></td>
+                            <td><?= e(number_format((float) $bill['amount'], 2)) ?></td>
+                            <td><?= e($bill['payment_status']) ?></td>
+                            <td><?= e($bill['payment_date'] ? date('Y-m-d', strtotime((string) $bill['payment_date'])) : '—') ?></td>
+                            <td><div class="row-actions"><button class="button button-small button-light" type="button" data-print-bill="<?= e((string) $bill['id']) ?>">Print</button></div></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <?php
+    exit;
+}
+
 if ($section === 'users') {
     $users = listReceptionists();
     sectionHeader('Users', 'Manage receptionist accounts and password access.');

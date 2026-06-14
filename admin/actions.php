@@ -109,6 +109,73 @@ try {
         jsonResponse(true, 'Appointment updated successfully.');
     }
 
+    if ($action === 'create_service') {
+        $data = [
+            'service_name' => trim((string) ($_POST['service_name'] ?? '')),
+            'price' => trim((string) ($_POST['price'] ?? '')),
+            'description' => trim((string) ($_POST['description'] ?? '')),
+        ];
+
+        $errors = validateServiceData($data);
+        if ($errors !== []) {
+            jsonResponse(false, implode(' ', $errors));
+        }
+
+        createService($data);
+        jsonResponse(true, 'Service created successfully.');
+    }
+
+    if ($action === 'update_service') {
+        $serviceId = (int) ($_POST['id'] ?? 0);
+        $data = [
+            'service_name' => trim((string) ($_POST['service_name'] ?? '')),
+            'price' => trim((string) ($_POST['price'] ?? '')),
+            'description' => trim((string) ($_POST['description'] ?? '')),
+        ];
+
+        $errors = validateServiceData($data);
+        if ($serviceId <= 0 || $errors !== []) {
+            jsonResponse(false, $errors === [] ? 'Please select a service to update.' : implode(' ', $errors));
+        }
+
+        updateService($serviceId, $data);
+        jsonResponse(true, 'Service updated successfully.');
+    }
+
+    if ($action === 'create_bill') {
+        $data = [
+            'patient_id' => (int) ($_POST['patient_id'] ?? 0),
+            'service_id' => (int) ($_POST['service_id'] ?? 0),
+            'amount' => trim((string) ($_POST['amount'] ?? '')),
+            'payment_status' => trim((string) ($_POST['payment_status'] ?? 'Unpaid')),
+            'payment_date' => trim((string) ($_POST['payment_date'] ?? '')),
+        ];
+
+        $errors = validateBillData($data);
+        if ($errors !== []) {
+            jsonResponse(false, implode(' ', $errors));
+        }
+
+        createBill($data);
+        jsonResponse(true, 'Bill generated successfully.');
+    }
+
+    if ($action === 'record_payment') {
+        $billId = (int) ($_POST['bill_id'] ?? 0);
+        $data = [
+            'payment_status' => trim((string) ($_POST['payment_status'] ?? '')),
+            'payment_date' => trim((string) ($_POST['payment_date'] ?? '')),
+        ];
+
+        $errors = validatePaymentData($data);
+        if ($billId <= 0 || $errors !== []) {
+            jsonResponse(false, $errors === [] ? 'Please select a bill to update.' : implode(' ', $errors));
+        }
+
+        recordPayment($billId, $data);
+        jsonResponse(true, 'Payment recorded successfully.');
+    }
+
     if ($action === 'create_user') {
         $fullname = trim((string) ($_POST['fullname'] ?? ''));
         $username = trim((string) ($_POST['username'] ?? ''));

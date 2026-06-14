@@ -11,7 +11,12 @@ const profileForm = document.querySelector('[data-profile-form]');
 const liveTime = document.querySelector('[data-live-time]');
 const liveDate = document.querySelector('[data-live-date]');
 
-let activeSection = window.dashboardConfig?.defaultSection || 'dashboard';
+const savedSection = localStorage.getItem('adminActiveSection');
+let activeSection = window.dashboardConfig?.defaultSection || savedSection || 'dashboard';
+
+if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    document.body.classList.add('sidebar-collapsed');
+}
 
 async function loadSection(section, params = {}) {
     activeSection = section;
@@ -37,6 +42,7 @@ async function loadSection(section, params = {}) {
         item.classList.toggle('active', item.dataset.section === section);
     });
 
+    localStorage.setItem('adminActiveSection', section);
     window.setTimeout(() => content.classList.remove('is-loading'), 60);
 }
 
@@ -102,6 +108,15 @@ document.addEventListener('click', (event) => {
     }
 });
 
+content.addEventListener('change', (event) => {
+    const serviceSelect = event.target.closest && event.target.closest('#billingService');
+    const amountInput = document.querySelector('#billingAmount');
+
+    if (serviceSelect && amountInput) {
+        amountInput.value = serviceSelect.selectedOptions?.[0]?.dataset.price || '';
+    }
+});
+
 content.addEventListener('click', async (event) => {
     const sectionButton = event.target.closest('[data-section]');
     const toggleButton = event.target.closest('[data-toggle-panel]');
@@ -143,6 +158,13 @@ content.addEventListener('click', async (event) => {
         if (result.ok) loadSection('appointments');
     }
 
+    const printBillButton = event.target.closest('[data-print-bill]');
+
+    if (printBillButton) {
+        const billId = printBillButton.dataset.printBill;
+        window.open(`print_receipt.php?bill_id=${encodeURIComponent(billId)}`, '_blank');
+    }
+
     if (cancelButton && confirm('Cancel this appointment?')) {
         const data = new FormData();
         data.append('csrf_token', window.dashboardConfig.csrfToken);
@@ -168,6 +190,23 @@ content.addEventListener('click', async (event) => {
         document.querySelector('#editPatientContact').value = patient.contact_number || '';
         document.querySelector('#editPatientEmail').value = patient.email || '';
         document.querySelector('#editPatientAddress').value = patient.address || '';
+        if (panel) {
+            panel.hidden = false;
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    const editServiceButton = event.target.closest('[data-edit-service]');
+
+    if (editServiceButton) {
+        const service = JSON.parse(editServiceButton.dataset.editService);
+        const panel = document.querySelector('#serviceEditPanel');
+
+        document.querySelector('#editServiceId').value = service.id || '';
+        document.querySelector('#editServiceName').value = service.service_name || '';
+        document.querySelector('#editServicePrice').value = service.price || '';
+        document.querySelector('#editServiceDescription').value = service.description || '';
+
         if (panel) {
             panel.hidden = false;
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -315,7 +354,8 @@ loadSection(activeSection);
 
 sidebarToggle?.addEventListener('click', (event) => {
     event.stopPropagation();
-    document.body.classList.toggle('sidebar-collapsed');
+    const collapsed = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', String(collapsed));
 });
 
 if (liveTime) {

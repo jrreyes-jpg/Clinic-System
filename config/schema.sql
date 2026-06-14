@@ -63,6 +63,34 @@ CREATE TABLE IF NOT EXISTS appointments (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS services (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    service_name VARCHAR(150) NOT NULL,
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    description TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_services_name (service_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS bills (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    service_id INT UNSIGNED NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_status ENUM('Paid', 'Unpaid', 'Partial') NOT NULL DEFAULT 'Unpaid',
+    payment_date DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_bills_patient_id (patient_id),
+    INDEX idx_bills_service_id (service_id),
+    INDEX idx_bills_payment_status (payment_status),
+    CONSTRAINT fk_bills_patient
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_bills_service
+        FOREIGN KEY (service_id) REFERENCES services(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS dental_records (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     patient_id INT UNSIGNED NOT NULL,
