@@ -17,7 +17,7 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | AC Ave. Dental Clinic</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/../assets/css/style.css')) ?>">
     <script>
         window.dashboardConfig = {
             csrfToken: '<?= e($csrfToken) ?>',
@@ -135,7 +135,7 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
 
                         <div class="profile-dropdown" data-profile-dropdown hidden>
                             <div class="profile-dropdown-head">
-                                <span class="profile-avatar profile-avatar-round">
+                                <span class="profile-avatar profile-avatar-round" data-profile-avatar>
                                     <?php if ($profilePhoto !== ''): ?>
                                         <img src="<?= e($profilePhoto) ?>" alt="<?= e($user['fullname'] ?? 'Admin') ?>">
                                     <?php else: ?>
@@ -189,6 +189,17 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
                             <label for="profile_photo">Profile Picture</label>
                             <input type="file" id="profile_photo" name="profile_photo" accept="image/jpeg,image/png,image/webp">
                             <p class="muted">JPG, PNG, or WEBP only.</p>
+                        </div>
+                    </div>
+
+                    <div class="avatar-cropper" data-avatar-cropper hidden>
+                        <div class="avatar-crop-stage" data-avatar-crop-stage>
+                            <img alt="Profile crop preview" data-avatar-crop-image>
+                            <span class="avatar-crop-mask" aria-hidden="true"></span>
+                        </div>
+                        <div class="avatar-crop-controls">
+                            <label for="profile_photo_zoom">Zoom</label>
+                            <input type="range" id="profile_photo_zoom" min="1" max="3" step="0.01" value="1" data-avatar-crop-zoom>
                         </div>
                     </div>
 

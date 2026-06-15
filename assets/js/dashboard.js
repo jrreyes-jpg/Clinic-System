@@ -10,6 +10,142 @@ const profileModal = document.querySelector('[data-profile-modal]');
 const profileForm = document.querySelector('[data-profile-form]');
 const liveTime = document.querySelector('[data-live-time]');
 const liveDate = document.querySelector('[data-live-date]');
+const avatarCropper = document.querySelector('[data-avatar-cropper]');
+const avatarCropStage = document.querySelector('[data-avatar-crop-stage]');
+const avatarCropImage = document.querySelector('[data-avatar-crop-image]');
+const avatarCropZoom = document.querySelector('[data-avatar-crop-zoom]');
+
+const avatarCrop = {
+    file: null,
+    url: '',
+    naturalWidth: 0,
+    naturalHeight: 0,
+    baseScale: 1,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    startOffsetX: 0,
+    startOffsetY: 0,
+};
+
+function clampAvatarCrop() {
+    if (!avatarCropStage || !avatarCropImage) {
+        return;
+    }
+
+    const size = avatarCropStage.getBoundingClientRect().width;
+    const scale = avatarCrop.baseScale * avatarCrop.zoom;
+    const scaledWidth = avatarCrop.naturalWidth * scale;
+    const scaledHeight = avatarCrop.naturalHeight * scale;
+    const maxX = Math.max(0, (scaledWidth - size) / 2);
+    const maxY = Math.max(0, (scaledHeight - size) / 2);
+
+    avatarCrop.offsetX = Math.min(maxX, Math.max(-maxX, avatarCrop.offsetX));
+    avatarCrop.offsetY = Math.min(maxY, Math.max(-maxY, avatarCrop.offsetY));
+}
+
+function renderAvatarCrop() {
+    if (!avatarCropStage || !avatarCropImage) {
+        return;
+    }
+
+    const scale = avatarCrop.baseScale * avatarCrop.zoom;
+    avatarCropImage.style.width = `${avatarCrop.naturalWidth * scale}px`;
+    avatarCropImage.style.height = `${avatarCrop.naturalHeight * scale}px`;
+    avatarCropImage.style.transform = `translate(-50%, -50%) translate(${avatarCrop.offsetX}px, ${avatarCrop.offsetY}px)`;
+    renderAvatarCropPreview();
+}
+
+function renderAvatarCropPreview() {
+    const preview = document.querySelector('[data-profile-preview]');
+    const image = preview?.querySelector('[data-avatar-crop-preview-image]');
+
+    if (!preview || !image || !avatarCropStage) {
+        return;
+    }
+
+    const previewSize = preview.getBoundingClientRect().width;
+    const stageSize = avatarCropStage.getBoundingClientRect().width;
+    const previewRatio = previewSize / stageSize;
+    const scale = avatarCrop.baseScale * avatarCrop.zoom * previewRatio;
+
+    image.style.position = 'absolute';
+    image.style.left = '50%';
+    image.style.top = '50%';
+    image.style.width = `${avatarCrop.naturalWidth * scale}px`;
+    image.style.height = `${avatarCrop.naturalHeight * scale}px`;
+    image.style.objectFit = 'initial';
+    image.style.transform = `translate(-50%, -50%) translate(${avatarCrop.offsetX * previewRatio}px, ${avatarCrop.offsetY * previewRatio}px)`;
+}
+
+function resetAvatarCropPosition() {
+    if (!avatarCropStage) {
+        return;
+    }
+
+    const size = avatarCropStage.getBoundingClientRect().width;
+    avatarCrop.baseScale = size / Math.min(avatarCrop.naturalWidth, avatarCrop.naturalHeight);
+    avatarCrop.zoom = 1;
+    avatarCrop.offsetX = 0;
+    avatarCrop.offsetY = 0;
+
+    if (avatarCropZoom) {
+        avatarCropZoom.value = '1';
+    }
+
+    renderAvatarCrop();
+}
+
+function buildCroppedAvatarBlob() {
+    if (!avatarCrop.file || !avatarCropStage || !avatarCropImage || !avatarCrop.naturalWidth || !avatarCrop.naturalHeight) {
+        return Promise.resolve(null);
+    }
+
+    const canvas = document.createElement('canvas');
+    const outputSize = 512;
+    const stageSize = avatarCropStage.getBoundingClientRect().width;
+    const ratio = outputSize / stageSize;
+    const scale = avatarCrop.baseScale * avatarCrop.zoom;
+    const drawWidth = avatarCrop.naturalWidth * scale * ratio;
+    const drawHeight = avatarCrop.naturalHeight * scale * ratio;
+    const drawX = (outputSize / 2) - (drawWidth / 2) + (avatarCrop.offsetX * ratio);
+    const drawY = (outputSize / 2) - (drawHeight / 2) + (avatarCrop.offsetY * ratio);
+    const context = canvas.getContext('2d');
+
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    context.fillStyle = '#f3f4f6';
+    context.fillRect(0, 0, outputSize, outputSize);
+    context.drawImage(avatarCropImage, drawX, drawY, drawWidth, drawHeight);
+
+    return new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.92);
+    });
+}
+
+function clearAvatarCrop() {
+    const photoInput = profileForm?.querySelector('input[name="profile_photo"]');
+
+    if (avatarCrop.url) {
+        URL.revokeObjectURL(avatarCrop.url);
+    }
+
+    avatarCrop.file = null;
+    avatarCrop.url = '';
+    avatarCrop.naturalWidth = 0;
+    avatarCrop.naturalHeight = 0;
+    avatarCrop.offsetX = 0;
+    avatarCrop.offsetY = 0;
+    avatarCrop.zoom = 1;
+
+    if (avatarCropper) avatarCropper.hidden = true;
+    if (avatarCropImage) avatarCropImage.removeAttribute('src');
+    if (avatarCropZoom) avatarCropZoom.value = '1';
+    if (photoInput) photoInput.value = '';
+}
 
 const savedSection = localStorage.getItem('adminActiveSection');
 let activeSection = window.dashboardConfig?.defaultSection || savedSection || 'dashboard';
@@ -287,6 +423,12 @@ profileForm?.addEventListener('submit', async (event) => {
     const button = profileForm.querySelector('button[type="submit"]');
     const data = new FormData(profileForm);
     data.append('action', 'update_profile');
+    data.delete('profile_photo');
+
+    const croppedAvatar = await buildCroppedAvatarBlob();
+    if (croppedAvatar) {
+        data.append('profile_photo', croppedAvatar, 'profile-avatar.jpg');
+    }
 
     if (button) button.disabled = true;
     const result = await postAction(data);
@@ -318,25 +460,83 @@ profileForm?.addEventListener('submit', async (event) => {
     });
 
     if (profileModal) profileModal.hidden = true;
+    clearAvatarCrop();
 });
 
 profileForm?.querySelector('input[name="profile_photo"]')?.addEventListener('change', (event) => {
     const file = event.target.files?.[0];
     const preview = document.querySelector('[data-profile-preview]');
 
-    if (!file || !preview) {
+    if (!file || !preview || !avatarCropper || !avatarCropImage) {
         return;
     }
 
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
+    avatarCrop.file = file;
+    if (avatarCrop.url) {
+        URL.revokeObjectURL(avatarCrop.url);
+    }
+
+    avatarCrop.url = URL.createObjectURL(file);
+    avatarCropImage.addEventListener('load', () => {
+        avatarCrop.naturalWidth = avatarCropImage.naturalWidth;
+        avatarCrop.naturalHeight = avatarCropImage.naturalHeight;
+        avatarCropper.hidden = false;
+        resetAvatarCropPosition();
+
         preview.textContent = '';
         const image = document.createElement('img');
-        image.src = String(reader.result);
+        image.src = avatarCrop.url;
         image.alt = 'Profile preview';
+        image.dataset.avatarCropPreviewImage = 'true';
         preview.appendChild(image);
-    });
-    reader.readAsDataURL(file);
+        renderAvatarCrop();
+    }, { once: true });
+    avatarCropImage.src = avatarCrop.url;
+});
+
+avatarCropZoom?.addEventListener('input', () => {
+    avatarCrop.zoom = Number(avatarCropZoom.value) || 1;
+    clampAvatarCrop();
+    renderAvatarCrop();
+});
+
+avatarCropStage?.addEventListener('pointerdown', (event) => {
+    if (!avatarCrop.file) {
+        return;
+    }
+
+    avatarCrop.dragging = true;
+    avatarCrop.startX = event.clientX;
+    avatarCrop.startY = event.clientY;
+    avatarCrop.startOffsetX = avatarCrop.offsetX;
+    avatarCrop.startOffsetY = avatarCrop.offsetY;
+    avatarCropStage.setPointerCapture(event.pointerId);
+});
+
+avatarCropStage?.addEventListener('pointermove', (event) => {
+    if (!avatarCrop.dragging) {
+        return;
+    }
+
+    avatarCrop.offsetX = avatarCrop.startOffsetX + event.clientX - avatarCrop.startX;
+    avatarCrop.offsetY = avatarCrop.startOffsetY + event.clientY - avatarCrop.startY;
+    clampAvatarCrop();
+    renderAvatarCrop();
+});
+
+avatarCropStage?.addEventListener('pointerup', (event) => {
+    avatarCrop.dragging = false;
+    avatarCropStage.releasePointerCapture(event.pointerId);
+});
+
+avatarCropStage?.addEventListener('pointercancel', () => {
+    avatarCrop.dragging = false;
+});
+
+window.addEventListener('resize', () => {
+    if (avatarCrop.file) {
+        resetAvatarCropPosition();
+    }
 });
 
 function updateLiveClock() {
