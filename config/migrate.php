@@ -108,6 +108,32 @@ if (!migrationColumnExists($pdo, 'patients', 'archived_at')) {
     echo "Added archived_at column to patients table." . PHP_EOL;
 }
 
+$patientExtraColumns = [
+    'first_name' => "ALTER TABLE patients ADD COLUMN first_name VARCHAR(80) NULL AFTER fullname",
+    'middle_name' => "ALTER TABLE patients ADD COLUMN middle_name VARCHAR(80) NULL AFTER first_name",
+    'last_name' => "ALTER TABLE patients ADD COLUMN last_name VARCHAR(80) NULL AFTER middle_name",
+    'suffix' => "ALTER TABLE patients ADD COLUMN suffix VARCHAR(30) NULL AFTER last_name",
+    'emergency_contact' => "ALTER TABLE patients ADD COLUMN emergency_contact VARCHAR(150) NULL AFTER email",
+    'emergency_contact_number' => "ALTER TABLE patients ADD COLUMN emergency_contact_number VARCHAR(30) NULL AFTER emergency_contact",
+    'has_hmo' => "ALTER TABLE patients ADD COLUMN has_hmo ENUM('Yes', 'No') NOT NULL DEFAULT 'No' AFTER emergency_contact_number",
+    'hmo_provider' => "ALTER TABLE patients ADD COLUMN hmo_provider VARCHAR(150) NULL AFTER has_hmo",
+    'hmo_card_number' => "ALTER TABLE patients ADD COLUMN hmo_card_number VARCHAR(80) NULL AFTER hmo_provider",
+    'hmo_type' => "ALTER TABLE patients ADD COLUMN hmo_type ENUM('Principal', 'Dependent') NULL AFTER hmo_card_number",
+    'hmo_expiration_date' => "ALTER TABLE patients ADD COLUMN hmo_expiration_date DATE NULL AFTER hmo_type",
+    'hmo_card_file' => "ALTER TABLE patients ADD COLUMN hmo_card_file VARCHAR(255) NULL AFTER hmo_expiration_date",
+    'allergies' => "ALTER TABLE patients ADD COLUMN allergies TEXT NULL AFTER hmo_card_file",
+    'medical_conditions' => "ALTER TABLE patients ADD COLUMN medical_conditions TEXT NULL AFTER allergies",
+    'current_medications' => "ALTER TABLE patients ADD COLUMN current_medications TEXT NULL AFTER medical_conditions",
+    'medical_notes' => "ALTER TABLE patients ADD COLUMN medical_notes TEXT NULL AFTER current_medications",
+];
+
+foreach ($patientExtraColumns as $column => $sql) {
+    if (!migrationColumnExists($pdo, 'patients', $column)) {
+        $pdo->exec($sql);
+        echo "Added {$column} column to patients table." . PHP_EOL;
+    }
+}
+
 $pdo->exec(
     "CREATE TABLE IF NOT EXISTS appointments (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -170,6 +196,16 @@ if (!migrationColumnExists($pdo, 'appointments', 'service')) {
         $pdo->exec("UPDATE appointments SET service = service_type WHERE service = ''");
     }
     echo "Added service column to appointments table." . PHP_EOL;
+}
+
+if (!migrationColumnExists($pdo, 'appointments', 'appointment_source')) {
+    $pdo->exec("ALTER TABLE appointments ADD COLUMN appointment_source ENUM('Walk-In', 'Facebook Page', 'Phone Call') NOT NULL DEFAULT 'Walk-In' AFTER appointment_time");
+    echo "Added appointment_source column to appointments table." . PHP_EOL;
+}
+
+if (!migrationColumnExists($pdo, 'appointments', 'dentist')) {
+    $pdo->exec("ALTER TABLE appointments ADD COLUMN dentist VARCHAR(120) NULL AFTER appointment_source");
+    echo "Added dentist column to appointments table." . PHP_EOL;
 }
 
 $pdo->exec(

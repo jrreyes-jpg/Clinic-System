@@ -2060,9 +2060,233 @@ th {
     font-weight: 800;
 }
 
+.dashboard-stat-grid-five {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.receptionist-workspace {
+    display: grid;
+    gap: 14px;
+}
+
+.touch-button {
+    min-height: 48px;
+    padding-inline: 18px;
+}
+
+.patient-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(160px, 220px) auto;
+    gap: 10px;
+}
+
+.tablet-form-panel {
+    padding: 14px;
+    border: 1px solid rgba(238, 228, 120, 0.7);
+    border-radius: 16px;
+    background: #fffef7;
+}
+
+.tablet-tabs {
+    display: grid;
+    gap: 14px;
+}
+
+.tab-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 6px;
+    border-radius: 16px;
+    background: #f4f6f8;
+}
+
+.tab-strip button {
+    min-height: 48px;
+    border: 0;
+    border-radius: 12px;
+    color: #3d3700;
+    background: transparent;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.tab-strip button.active {
+    color: #111111;
+    background: #ffffff;
+    box-shadow: 0 10px 22px rgba(94, 86, 18, 0.1);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+    animation: tabFade 160ms ease both;
+}
+
+.tablet-form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.tablet-form-grid .form-group-wide {
+    grid-column: span 2;
+}
+
+.tablet-form-grid input,
+.tablet-form-grid select,
+.tablet-form-grid textarea,
+.patient-filter-bar input,
+.patient-filter-bar select,
+.appointment-toolbar input,
+.appointment-toolbar select {
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+.segmented-field,
+.segmented-control {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.segmented-field {
+    margin-bottom: 12px;
+}
+
+.segmented-field > span {
+    font-weight: 900;
+}
+
+.segmented-field label,
+.segmented-control label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(238, 228, 120, 0.72);
+    border-radius: 999px;
+    background: #ffffff;
+    font-weight: 800;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.tablet-table th,
+.tablet-table td {
+    padding: 12px;
+}
+
+.patient-profile-panel {
+    padding: 16px;
+    border: 1px solid rgba(238, 228, 120, 0.72);
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.patient-profile-panel[hidden] {
+    display: none;
+}
+
+.profile-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.profile-card-grid article {
+    min-height: 132px;
+    padding: 14px;
+    border: 1px solid rgba(238, 228, 120, 0.58);
+    border-radius: 14px;
+    background: #fffef7;
+}
+
+.profile-card-grid h3 {
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+.profile-card-grid p {
+    margin: 4px 0;
+    color: #3d3700;
+}
+
+.tablet-list {
+    display: grid;
+    gap: 10px;
+}
+
+.tablet-list-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(238, 228, 120, 0.58);
+    border-radius: 14px;
+    background: #fffef7;
+}
+
+.tablet-list-row strong,
+.tablet-list-row span {
+    display: block;
+}
+
+.tablet-list-row span:not(.status-badge) {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.tablet-appointment-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.appointment-entry-card .admin-form {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+}
+
+@keyframes tabFade {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .quick-action-list a:hover {
     background: var(--primary-soft);
     transform: translateX(3px);
+}
+
+@media (max-width: 1180px) {
+    .dashboard-stat-grid-five {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .tablet-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 980px) {
@@ -2097,6 +2321,15 @@ th {
     .admin-content-grid,
     .appointment-layout {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-stat-grid-five,
+    .tablet-appointment-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .patient-filter-bar {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -2134,6 +2367,17 @@ th {
     .admin-content-grid,
     .appointment-layout {
         grid-template-columns: 1fr;
+    }
+
+    .tab-strip,
+    .tablet-form-grid,
+    .profile-card-grid,
+    .tablet-list-row {
+        grid-template-columns: 1fr;
+    }
+
+    .tablet-form-grid .form-group-wide {
+        grid-column: auto;
     }
 
     .calendar-grid {

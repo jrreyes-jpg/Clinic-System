@@ -13,39 +13,122 @@ function sectionHeader(string $title, string $subtitle): void
     echo '<div class="section-meta" data-title="' . e($title) . '" data-subtitle="' . e($subtitle) . '"></div>';
 }
 
+function patientNameParts(array $patient): array
+{
+    $first = (string) ($patient['first_name'] ?? '');
+    $middle = (string) ($patient['middle_name'] ?? '');
+    $last = (string) ($patient['last_name'] ?? '');
+    $suffix = (string) ($patient['suffix'] ?? '');
+
+    if ($first === '' && $last === '' && !empty($patient['fullname'])) {
+        $parts = preg_split('/\s+/', trim((string) $patient['fullname'])) ?: [];
+        $first = array_shift($parts) ?? '';
+        $last = implode(' ', $parts);
+    }
+
+    return [$first, $middle, $last, $suffix];
+}
+
+function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
+{
+    [$firstName, $middleName, $lastName, $suffix] = patientNameParts($patient);
+    $hasHmo = ((string) ($patient['has_hmo'] ?? 'No')) === 'Yes';
+    $idPrefix = $prefix === '' ? 'patient' : $prefix;
+    ?>
+    <input type="hidden" name="fullname" data-fullname-target value="<?= e($patient['fullname'] ?? '') ?>">
+    <div class="tablet-tabs" data-tabs>
+        <div class="tab-strip" role="tablist">
+            <button class="active" type="button" data-tab-target="personal">Personal</button>
+            <button type="button" data-tab-target="contact">Contact</button>
+            <button type="button" data-tab-target="hmo">HMO</button>
+            <button type="button" data-tab-target="medical">Medical</button>
+        </div>
+
+        <div class="tab-panel active" data-tab-panel="personal">
+            <div class="tablet-form-grid">
+                <div class="form-group"><label>First Name</label><input name="first_name" data-name-part value="<?= e($firstName) ?>" required></div>
+                <div class="form-group"><label>Middle Name</label><input name="middle_name" data-name-part value="<?= e($middleName) ?>"></div>
+                <div class="form-group"><label>Last Name</label><input name="last_name" data-name-part value="<?= e($lastName) ?>" required></div>
+                <div class="form-group"><label>Suffix</label><input name="suffix" data-name-part value="<?= e($suffix) ?>" placeholder="Jr., III"></div>
+                <div class="form-group"><label>Birthdate</label><input type="date" name="birthdate" data-birthdate value="<?= e($patient['birthdate'] ?? '') ?>" required></div>
+                <div class="form-group"><label>Age</label><input name="age_display" data-age-output value="<?= e((string) ($patient['age'] ?? '')) ?>" readonly></div>
+                <div class="form-group"><label>Sex</label><select name="gender" required><?php $gender = $patient['gender'] ?? ''; ?><option value="">Select</option><option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option><option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option><option value="Other" <?= $gender === 'Other' ? 'selected' : '' ?>>Other</option></select></div>
+            </div>
+        </div>
+
+        <div class="tab-panel" data-tab-panel="contact">
+            <div class="tablet-form-grid">
+                <div class="form-group"><label>Contact Number</label><input name="contact_number" value="<?= e($patient['contact_number'] ?? '') ?>" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= e($patient['email'] ?? '') ?>"></div>
+                <div class="form-group form-group-wide"><label>Address</label><input name="address" value="<?= e($patient['address'] ?? '') ?>"></div>
+                <div class="form-group"><label>Emergency Contact</label><input name="emergency_contact" value="<?= e($patient['emergency_contact'] ?? '') ?>"></div>
+                <div class="form-group"><label>Emergency Contact Number</label><input name="emergency_contact_number" value="<?= e($patient['emergency_contact_number'] ?? '') ?>"></div>
+            </div>
+        </div>
+
+        <div class="tab-panel" data-tab-panel="hmo">
+            <div class="segmented-field" data-hmo-toggle>
+                <span>Has HMO?</span>
+                <label><input type="radio" name="has_hmo" value="Yes" <?= $hasHmo ? 'checked' : '' ?>> Yes</label>
+                <label><input type="radio" name="has_hmo" value="No" <?= !$hasHmo ? 'checked' : '' ?>> No</label>
+            </div>
+            <div class="tablet-form-grid hmo-fields" data-hmo-fields <?= $hasHmo ? '' : 'hidden' ?>>
+                <div class="form-group"><label>HMO Provider</label><input name="hmo_provider" value="<?= e($patient['hmo_provider'] ?? '') ?>"></div>
+                <div class="form-group"><label>HMO Card Number</label><input name="hmo_card_number" value="<?= e($patient['hmo_card_number'] ?? '') ?>"></div>
+                <div class="form-group"><label>Principal / Dependent</label><select name="hmo_type"><option value="">Select</option><?php $hmoType = $patient['hmo_type'] ?? ''; ?><option value="Principal" <?= $hmoType === 'Principal' ? 'selected' : '' ?>>Principal</option><option value="Dependent" <?= $hmoType === 'Dependent' ? 'selected' : '' ?>>Dependent</option></select></div>
+                <div class="form-group"><label>Expiration Date</label><input type="date" name="hmo_expiration_date" value="<?= e($patient['hmo_expiration_date'] ?? '') ?>"></div>
+                <div class="form-group form-group-wide"><label>HMO Card Upload</label><input type="file" name="hmo_card_upload" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="muted">Upload field is ready for workflow; run migration/storage setup to persist files.</small></div>
+            </div>
+        </div>
+
+        <div class="tab-panel" data-tab-panel="medical">
+            <div class="tablet-form-grid">
+                <div class="form-group"><label>Allergies</label><textarea name="allergies" rows="2"><?= e($patient['allergies'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Medical Conditions</label><textarea name="medical_conditions" rows="2"><?= e($patient['medical_conditions'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Current Medications</label><textarea name="current_medications" rows="2"><?= e($patient['current_medications'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Notes</label><textarea name="medical_notes" rows="2"><?= e($patient['medical_notes'] ?? '') ?></textarea></div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
 if ($section === 'dashboard') {
     $totalPatients = countActivePatients();
     $appointmentsToday = countAppointmentsToday();
     $pendingAppointments = countAppointmentsByStatus('pending');
+    $confirmedAppointments = countAppointmentsByStatus('confirmed');
     $completedAppointments = countAppointmentsByStatus('completed');
-    $activeUsers = countActiveUsers();
-    $recentActivities = recentDashboardActivities();
-    sectionHeader('Dashboard', 'Clinic overview and daily activity.');
+    $noShowAppointments = countNoShowAppointments();
+    $recentAppointments = recentAppointments(7);
+    sectionHeader('Dashboard', 'Compact reception overview for today.');
     ?>
-    <section class="dashboard-stat-grid">
-        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-hospital-user"></i></div><div><span>Total Patients</span><strong><?= e((string) $totalPatients) ?></strong></div></article>
+    <section class="dashboard-stat-grid dashboard-stat-grid-five">
         <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div><div><span>Today's Appointments</span><strong><?= e((string) $appointmentsToday) ?></strong></div></article>
         <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div><div><span>Pending Appointments</span><strong><?= e((string) $pendingAppointments) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-calendar-check"></i></div><div><span>Confirmed</span><strong><?= e((string) $confirmedAppointments) ?></strong></div></article>
         <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div><div><span>Completed Appointments</span><strong><?= e((string) $completedAppointments) ?></strong></div></article>
+        <article class="dashboard-stat-card"><div class="stat-icon"><i class="fa-solid fa-user-clock"></i></div><div><span>No Shows</span><strong><?= e((string) $noShowAppointments) ?></strong></div></article>
     </section>
-    <section class="admin-content-grid">
-        <article class="dashboard-card">
-            <div class="card-header"><div><h2>Recent Activities</h2><p class="muted">Latest records and system actions.</p></div><i class="fa-solid fa-bolt"></i></div>
-            <div class="activity-list">
-                <?php if ($recentActivities === []): ?><p class="muted">No recent activities yet.</p><?php endif; ?>
-                <?php foreach ($recentActivities as $activity): ?>
-                    <div class="activity-item"><div class="activity-icon"><i class="fa-solid <?= e($activity['icon']) ?>"></i></div><div><strong><?= e($activity['label']) ?></strong><span><?= e($activity['title']) ?> - <?= e($activity['meta']) ?></span></div><time><?= e(date('M d', strtotime((string) $activity['created_at']))) ?></time></div>
+
+    <section class="dashboard-card">
+        <div class="card-header"><div><h2>Recent Appointments</h2><p class="muted">Fast scan list for receptionist follow-through.</p></div><i class="fa-solid fa-list-check"></i></div>
+        <div class="tablet-list">
+            <?php if ($recentAppointments === []): ?><p class="muted">No appointments yet.</p><?php endif; ?>
+            <?php foreach ($recentAppointments as $appointment): ?>
+                <article class="tablet-list-row">
+                    <div>
+                        <strong><?= e($appointment['patient_name']) ?></strong>
+                        <span><?= e($appointment['patient_no']) ?> · <?= e($appointment['contact_number']) ?></span>
+                    </div>
+                    <div>
+                        <strong><?= e(date('M d', strtotime((string) $appointment['appointment_date']))) ?> <?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?></strong>
+                        <span><?= e($appointment['service_type']) ?><?= $appointment['dentist'] ? ' · Dr. ' . e($appointment['dentist']) : '' ?></span>
+                    </div>
+                    <span class="status-badge status-<?= e($appointment['status']) ?>"><?= e(ucfirst($appointment['status'])) ?></span>
+                </article>
                 <?php endforeach; ?>
-            </div>
-        </article>
-        <article class="dashboard-card quick-actions-card">
-            <div class="card-header"><div><h2>Quick Actions</h2><p class="muted">Open common workflows here.</p></div><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-            <div class="quick-action-list">
-                <button type="button" data-section="patients" data-open-create="patient"><i class="fa-solid fa-user-plus"></i><span>Add Patient</span></button>
-                <button type="button" data-section="appointments"><i class="fa-solid fa-calendar-plus"></i><span>Schedule Appointment</span></button>
-                <button type="button" data-section="users"><i class="fa-solid fa-user-nurse"></i><span>Manage Users</span></button>
-            </div>
-        </article>
+        </div>
     </section>
     <?php
     exit;
@@ -53,47 +136,69 @@ if ($section === 'dashboard') {
 
 if ($section === 'patients') {
     $search = trim((string) ($_GET['search'] ?? ''));
+    $hmoFilter = trim((string) ($_GET['hmo'] ?? ''));
     $patients = listPatients($search);
+    if ($hmoFilter !== '') {
+        $patients = array_values(array_filter($patients, static function (array $patient) use ($hmoFilter): bool {
+            $hasHmo = ((string) ($patient['has_hmo'] ?? 'No')) === 'Yes' ? 'Yes' : 'No';
+            return $hasHmo === $hmoFilter;
+        }));
+    }
     sectionHeader('Patients', 'Search, add, edit, and archive patient records.');
     ?>
-    <section class="dashboard-card">
+    <section class="dashboard-card receptionist-workspace patient-workspace">
         <div class="card-header">
-            <div><h2>Patient Records</h2><p class="muted"><?= count($patients) ?> active record<?= count($patients) === 1 ? '' : 's' ?></p></div>
-            <button class="button button-small" type="button" data-toggle-panel="patientCreatePanel"><i class="fa-solid fa-plus"></i> Add Patient</button>
+            <div><h2>Patient Registration</h2><p class="muted"><?= count($patients) ?> matching patient<?= count($patients) === 1 ? '' : 's' ?></p></div>
+            <button class="button button-small touch-button" type="button" data-toggle-panel="patientCreatePanel"><i class="fa-solid fa-plus"></i> New Patient</button>
         </div>
-        <form class="search-bar spa-search" data-section-search="patients">
-            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search patient no, name, contact, or email">
-            <button class="button button-small" type="submit">Search</button>
+
+        <form class="search-bar spa-search patient-filter-bar" data-section-search="patients">
+            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search ID, name, contact, or email">
+            <select name="hmo">
+                <option value="">All HMO</option>
+                <option value="Yes" <?= $hmoFilter === 'Yes' ? 'selected' : '' ?>>With HMO</option>
+                <option value="No" <?= $hmoFilter === 'No' ? 'selected' : '' ?>>No HMO</option>
+            </select>
+            <button class="button button-small touch-button" type="submit">Filter</button>
         </form>
-        <div class="inline-panel" id="patientCreatePanel" hidden>
+
+        <div class="inline-panel tablet-form-panel" id="patientCreatePanel" hidden>
             <form class="admin-form ajax-form" data-action="create_patient">
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                <?php $patient = []; require __DIR__ . '/../patients/form.php'; ?>
-                <button class="button" type="submit">Save Patient</button>
+                <?php renderPatientTabletForm(); ?>
+                <div class="form-actions"><button class="button touch-button" type="submit">Save Patient</button></div>
             </form>
         </div>
-        <div class="inline-panel" id="patientEditPanel" hidden>
+
+        <div class="inline-panel tablet-form-panel" id="patientEditPanel" hidden>
             <form class="admin-form ajax-form" data-action="update_patient">
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <input type="hidden" name="id" id="editPatientId">
-                <div class="form-grid">
-                    <div class="form-group"><label>Full Name</label><input name="fullname" id="editPatientFullname" required></div>
-                    <div class="form-group"><label>Birthdate</label><input type="date" name="birthdate" id="editPatientBirthdate" required></div>
-                    <div class="form-group"><label>Gender</label><select name="gender" id="editPatientGender" required><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
-                    <div class="form-group"><label>Contact Number</label><input name="contact_number" id="editPatientContact" required></div>
-                    <div class="form-group"><label>Email</label><input type="email" name="email" id="editPatientEmail"></div>
-                    <div class="form-group form-group-wide"><label>Address</label><input name="address" id="editPatientAddress"></div>
-                </div>
-                <button class="button" type="submit">Update Patient</button>
+                <?php renderPatientTabletForm([], 'editPatient'); ?>
+                <div class="form-actions"><button class="button touch-button" type="submit">Update Patient</button></div>
             </form>
         </div>
+
+        <div class="patient-profile-panel" data-patient-profile hidden></div>
+
         <div class="table-wrap">
-            <table class="compact-table">
-                <thead><tr><th>No.</th><th>Name</th><th>Age</th><th>Gender</th><th>Contact</th><th>Email</th><th>Actions</th></tr></thead>
+            <table class="compact-table tablet-table">
+                <thead><tr><th>Patient ID</th><th>Name</th><th>Contact Number</th><th>HMO Status</th><th>No Show Count</th><th>Actions</th></tr></thead>
                 <tbody>
-                    <?php if ($patients === []): ?><tr><td colspan="7">No patient records found.</td></tr><?php endif; ?>
+                    <?php if ($patients === []): ?><tr><td colspan="6">No patient records found.</td></tr><?php endif; ?>
                     <?php foreach ($patients as $patient): ?>
-                        <tr><td><?= e($patient['patient_no']) ?></td><td><?= e($patient['fullname']) ?></td><td><?= e((string) $patient['age']) ?></td><td><?= e($patient['gender']) ?></td><td><?= e($patient['contact_number']) ?></td><td><?= e($patient['email'] ?? '') ?></td><td><div class="row-actions"><button class="button button-small button-light" type="button" data-view-patient='<?= e(json_encode($patient)) ?>'>View</button><button class="button button-small" type="button" data-edit-patient='<?= e(json_encode($patient)) ?>'>Edit</button><button class="button button-small button-secondary" type="button" data-archive-patient="<?= e((string) $patient['id']) ?>">Archive</button></div></td></tr>
+                        <?php
+                        $hasHmo = ((string) ($patient['has_hmo'] ?? 'No')) === 'Yes';
+                        $patient['no_show_count'] = countPatientNoShows((int) $patient['id']);
+                        ?>
+                        <tr>
+                            <td><?= e($patient['patient_no']) ?></td>
+                            <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> · <?= e($patient['gender']) ?></span></td>
+                            <td><?= e($patient['contact_number']) ?></td>
+                            <td><span class="status-badge <?= $hasHmo ? 'status-completed' : 'status-pending' ?>"><?= $hasHmo ? 'With HMO' : 'No HMO' ?></span></td>
+                            <td><?= e((string) $patient['no_show_count']) ?></td>
+                            <td><div class="row-actions"><button class="button button-small button-light" type="button" data-view-patient='<?= e(json_encode($patient)) ?>'>View</button><button class="button button-small" type="button" data-edit-patient='<?= e(json_encode($patient)) ?>'>Edit</button><button class="button button-small button-secondary" type="button" data-schedule-patient='<?= e(json_encode($patient)) ?>'>Schedule</button></div></td>
+                        </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -105,6 +210,8 @@ if ($section === 'patients') {
 
 if ($section === 'appointments') {
     $patients = listPatients();
+    $services = listServices();
+    $selectedPatient = (int) ($_GET['patient_id'] ?? 0);
     $selectedDate = trim((string) ($_GET['date'] ?? date('Y-m-d')));
     $selectedStatus = trim((string) ($_GET['status'] ?? ''));
     $calendarMonth = trim((string) ($_GET['month'] ?? date('Y-m')));
@@ -146,37 +253,48 @@ if ($section === 'appointments') {
         </form>
     </section>
 
-    <section class="appointment-layout">
-        <article class="dashboard-card">
-            <div class="card-header"><div><h2>Book Appointment</h2><p class="muted">Create an appointment for an existing patient.</p></div><i class="fa-solid fa-calendar-plus"></i></div>
+    <section class="appointment-layout tablet-appointment-layout">
+        <article class="dashboard-card appointment-entry-card">
+            <div class="card-header"><div><h2>Book Appointment</h2><p class="muted">Compact tablet flow for fast scheduling.</p></div><i class="fa-solid fa-calendar-plus"></i></div>
             <form class="admin-form ajax-form" data-action="create_appointment">
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                <div class="form-grid">
-                    <div class="form-group"><label>Patient</label><select name="patient_id" required><option value="">Select patient</option><?php foreach ($patients as $patient): ?><option value="<?= e((string) $patient['id']) ?>"><?= e($patient['patient_no'] . ' - ' . $patient['fullname']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Service</label><input name="service_type" placeholder="Oral Prophylaxis" required></div>
+                <div class="tablet-form-grid">
+                    <div class="form-group form-group-wide"><label>Patient</label><select name="patient_id" id="appointmentPatient" required><option value="">Select patient</option><?php foreach ($patients as $patient): ?><option value="<?= e((string) $patient['id']) ?>" <?= $selectedPatient === (int) $patient['id'] ? 'selected' : '' ?>><?= e($patient['patient_no'] . ' - ' . $patient['fullname']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group form-group-wide">
+                        <label>Appointment Source</label>
+                        <div class="segmented-control">
+                            <label><input type="radio" name="appointment_source" value="Walk-In" checked> Walk-In</label>
+                            <label><input type="radio" name="appointment_source" value="Facebook Page"> Facebook Page</label>
+                            <label><input type="radio" name="appointment_source" value="Phone Call"> Phone Call</label>
+                        </div>
+                    </div>
                     <div class="form-group"><label>Date</label><input type="date" name="appointment_date" required></div>
                     <div class="form-group"><label>Time</label><input type="time" name="appointment_time" required></div>
-                    <div class="form-group"><label>Status</label><select name="status"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+                    <div class="form-group"><label>Dentist</label><input name="dentist" placeholder="Dentist on duty"></div>
+                    <div class="form-group"><label>Service</label><select name="service_type" required><option value="">Select service</option><?php foreach ($services as $service): ?><option value="<?= e($service['service_name']) ?>"><?= e($service['service_name']) ?></option><?php endforeach; ?><option value="Consultation">Consultation</option></select></div>
+                    <input type="hidden" name="status" value="pending">
                     <div class="form-group form-group-wide"><label>Notes</label><input name="notes" placeholder="Optional notes"></div>
                 </div>
-                <button class="button" type="submit">Save Appointment</button>
+                <button class="button touch-button" type="submit">Save Appointment</button>
             </form>
         </article>
 
-        <article class="dashboard-card">
+        <article class="dashboard-card appointment-entry-card">
             <div class="card-header"><div><h2>Reschedule Appointment</h2><p class="muted">Choose an appointment from the daily list to edit.</p></div><i class="fa-solid fa-clock"></i></div>
             <form class="admin-form ajax-form" data-action="update_appointment">
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <input type="hidden" name="id" id="editAppointmentId">
-                <div class="form-grid">
+                <div class="tablet-form-grid">
                     <div class="form-group"><label>Patient</label><select name="patient_id" id="editAppointmentPatient" required><option value="">Select patient</option><?php foreach ($patients as $patient): ?><option value="<?= e((string) $patient['id']) ?>"><?= e($patient['patient_no'] . ' - ' . $patient['fullname']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Service</label><input name="service_type" id="editAppointmentService" required></div>
+                    <div class="form-group"><label>Source</label><select name="appointment_source" id="editAppointmentSource"><option>Walk-In</option><option>Facebook Page</option><option>Phone Call</option></select></div>
                     <div class="form-group"><label>Date</label><input type="date" name="appointment_date" id="editAppointmentDate" required></div>
                     <div class="form-group"><label>Time</label><input type="time" name="appointment_time" id="editAppointmentTime" required></div>
+                    <div class="form-group"><label>Dentist</label><input name="dentist" id="editAppointmentDentist"></div>
+                    <div class="form-group"><label>Service</label><input name="service_type" id="editAppointmentService" required></div>
                     <div class="form-group"><label>Status</label><select name="status" id="editAppointmentStatus"><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
                     <div class="form-group form-group-wide"><label>Notes</label><input name="notes" id="editAppointmentNotes"></div>
                 </div>
-                <button class="button" type="submit">Update Appointment</button>
+                <button class="button touch-button" type="submit">Update Appointment</button>
             </form>
         </article>
     </section>
@@ -186,16 +304,17 @@ if ($section === 'appointments') {
             <div class="card-header"><div><h2>Daily Appointment List</h2><p class="muted"><?= e(date('M d, Y', strtotime($selectedDate))) ?> - <?= count($appointments) ?> record<?= count($appointments) === 1 ? '' : 's' ?></p></div><i class="fa-solid fa-list-check"></i></div>
             <div class="table-wrap">
                 <table class="compact-table appointment-table">
-                    <thead><tr><th>Time</th><th>Patient</th><th>Service</th><th>Status</th><th>Contact</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Time</th><th>Patient</th><th>Source</th><th>Dentist</th><th>Service</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody>
-                        <?php if ($appointments === []): ?><tr><td colspan="6">No appointments for this filter.</td></tr><?php endif; ?>
+                        <?php if ($appointments === []): ?><tr><td colspan="7">No appointments for this filter.</td></tr><?php endif; ?>
                         <?php foreach ($appointments as $appointment): ?>
                             <tr>
                                 <td><?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?></td>
-                                <td><strong><?= e($appointment['patient_name']) ?></strong><br><span class="muted"><?= e($appointment['patient_no']) ?></span></td>
+                                <td><strong><?= e($appointment['patient_name']) ?></strong><br><span class="muted"><?= e($appointment['patient_no']) ?> · <?= e($appointment['contact_number']) ?></span></td>
+                                <td><?= e($appointment['appointment_source'] ?? 'Walk-In') ?></td>
+                                <td><?= e($appointment['dentist'] ?? '') ?></td>
                                 <td><?= e($appointment['service_type']) ?></td>
                                 <td><span class="status-badge status-<?= e($appointment['status']) ?>"><?= e(ucfirst($appointment['status'])) ?></span></td>
-                                <td><?= e($appointment['contact_number']) ?></td>
                                 <td>
                                     <div class="row-actions">
                                         <button class="button button-small" type="button" data-edit-appointment='<?= e(json_encode($appointment)) ?>'>Reschedule</button>

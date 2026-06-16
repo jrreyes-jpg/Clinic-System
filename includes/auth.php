@@ -622,6 +622,17 @@ function listPatients(string $search = '', bool $includeArchived = false): array
     $pdo = getDatabaseConnection();
     $conditions = [];
     $parameters = [];
+    $optionalColumns = [
+        'first_name', 'middle_name', 'last_name', 'suffix',
+        'emergency_contact', 'emergency_contact_number',
+        'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
+        'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
+    ];
+    $selectExtras = '';
+
+    foreach ($optionalColumns as $column) {
+        $selectExtras .= ', ' . (columnExists('patients', $column) ? $column : 'NULL AS ' . $column);
+    }
 
     if (!$includeArchived && columnExists('patients', 'archived_at')) {
         $conditions[] = 'archived_at IS NULL';
@@ -635,7 +646,7 @@ function listPatients(string $search = '', bool $includeArchived = false): array
     $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
 
     $statement = $pdo->prepare(
-        "SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at,
+        "SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at{$selectExtras},
             " . (columnExists('patients', 'archived_at') ? 'archived_at' : 'NULL AS archived_at') . "
          FROM patients
          {$where}
@@ -649,9 +660,20 @@ function listPatients(string $search = '', bool $includeArchived = false): array
 function findPatientById(int $patientId): ?array
 {
     $pdo = getDatabaseConnection();
+    $optionalColumns = [
+        'first_name', 'middle_name', 'last_name', 'suffix',
+        'emergency_contact', 'emergency_contact_number',
+        'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
+        'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
+    ];
+    $selectExtras = '';
+
+    foreach ($optionalColumns as $column) {
+        $selectExtras .= ', ' . (columnExists('patients', $column) ? $column : 'NULL AS ' . $column);
+    }
 
     $statement = $pdo->prepare(
-        'SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at,
+        'SELECT id, patient_no, fullname, birthdate, age, gender, address, contact_number, email, created_at' . $selectExtras . ',
             ' . (columnExists('patients', 'archived_at') ? 'archived_at' : 'NULL AS archived_at') . '
          FROM patients
          WHERE id = :id
@@ -669,12 +691,9 @@ function createPatient(array $data): int
     $pdo = getDatabaseConnection();
     $patientNo = generatePatientNumber();
     $age = calculateAgeFromBirthdate((string) $data['birthdate']);
-
-    $statement = $pdo->prepare(
-        'INSERT INTO patients (patient_no, fullname, birthdate, age, gender, address, contact_number, email)
-         VALUES (:patient_no, :fullname, :birthdate, :age, :gender, :address, :contact_number, :email)'
-    );
-    $statement->execute([
+    $columns = ['patient_no', 'fullname', 'birthdate', 'age', 'gender', 'address', 'contact_number', 'email'];
+    $placeholders = [':patient_no', ':fullname', ':birthdate', ':age', ':gender', ':address', ':contact_number', ':email'];
+    $parameters = [
         'patient_no' => $patientNo,
         'fullname' => $data['fullname'],
         'birthdate' => $data['birthdate'],
@@ -683,7 +702,24 @@ function createPatient(array $data): int
         'address' => $data['address'],
         'contact_number' => $data['contact_number'],
         'email' => $data['email'],
-    ]);
+    ];
+    $optionalColumns = [
+        'first_name', 'middle_name', 'last_name', 'suffix',
+        'emergency_contact', 'emergency_contact_number',
+        'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
+        'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
+    ];
+
+    foreach ($optionalColumns as $column) {
+        if (columnExists('patients', $column)) {
+            $columns[] = $column;
+            $placeholders[] = ':' . $column;
+            $parameters[$column] = $data[$column] ?? null;
+        }
+    }
+
+    $statement = $pdo->prepare('INSERT INTO patients (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+    $statement->execute($parameters);
 
     return (int) $pdo->lastInsertId();
 }
@@ -692,19 +728,16 @@ function updatePatient(int $patientId, array $data): void
 {
     $pdo = getDatabaseConnection();
     $age = calculateAgeFromBirthdate((string) $data['birthdate']);
-
-    $statement = $pdo->prepare(
-        'UPDATE patients
-         SET fullname = :fullname,
-             birthdate = :birthdate,
-             age = :age,
-             gender = :gender,
-             address = :address,
-             contact_number = :contact_number,
-             email = :email
-         WHERE id = :id'
-    );
-    $statement->execute([
+    $sets = [
+        'fullname = :fullname',
+        'birthdate = :birthdate',
+        'age = :age',
+        'gender = :gender',
+        'address = :address',
+        'contact_number = :contact_number',
+        'email = :email',
+    ];
+    $parameters = [
         'fullname' => $data['fullname'],
         'birthdate' => $data['birthdate'],
         'age' => $age,
@@ -713,7 +746,23 @@ function updatePatient(int $patientId, array $data): void
         'contact_number' => $data['contact_number'],
         'email' => $data['email'],
         'id' => $patientId,
-    ]);
+    ];
+    $optionalColumns = [
+        'first_name', 'middle_name', 'last_name', 'suffix',
+        'emergency_contact', 'emergency_contact_number',
+        'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
+        'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
+    ];
+
+    foreach ($optionalColumns as $column) {
+        if (columnExists('patients', $column)) {
+            $sets[] = $column . ' = :' . $column;
+            $parameters[$column] = $data[$column] ?? null;
+        }
+    }
+
+    $statement = $pdo->prepare('UPDATE patients SET ' . implode(', ', $sets) . ' WHERE id = :id');
+    $statement->execute($parameters);
 }
 
 function listServices(string $search = ''): array
@@ -1213,6 +1262,51 @@ function countAppointmentsByStatus(string $status): int
     return (int) $statement->fetchColumn();
 }
 
+function countNoShowAppointments(): int
+{
+    return countAppointmentsByStatus('cancelled');
+}
+
+function countPatientNoShows(int $patientId): int
+{
+    if (!tableExists('appointments') || $patientId <= 0) {
+        return 0;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare('SELECT COUNT(*) FROM appointments WHERE patient_id = :patient_id AND status = :status');
+    $statement->execute([
+        'patient_id' => $patientId,
+        'status' => 'cancelled',
+    ]);
+
+    return (int) $statement->fetchColumn();
+}
+
+function recentAppointments(int $limit = 6): array
+{
+    if (!tableExists('appointments')) {
+        return [];
+    }
+
+    $pdo = getDatabaseConnection();
+    $serviceColumn = appointmentServiceColumn();
+    $sourceSelect = columnExists('appointments', 'appointment_source') ? 'a.appointment_source' : 'NULL AS appointment_source';
+    $dentistSelect = columnExists('appointments', 'dentist') ? 'a.dentist' : 'NULL AS dentist';
+    $statement = $pdo->prepare(
+        "SELECT a.id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status, {$sourceSelect}, {$dentistSelect},
+                p.patient_no, p.fullname AS patient_name, p.contact_number
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         ORDER BY a.appointment_date DESC, a.appointment_time DESC
+         LIMIT :limit"
+    );
+    $statement->bindValue(':limit', max(1, min(30, $limit)), PDO::PARAM_INT);
+    $statement->execute();
+
+    return $statement->fetchAll();
+}
+
 function getDailyAppointmentCounts(int $days = 7): array
 {
     if (!tableExists('appointments')) {
@@ -1424,9 +1518,11 @@ function listAppointments(string $date = '', string $status = ''): array
 
     $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
     $serviceColumn = appointmentServiceColumn();
+    $sourceSelect = columnExists('appointments', 'appointment_source') ? 'a.appointment_source' : 'NULL AS appointment_source';
+    $dentistSelect = columnExists('appointments', 'dentist') ? 'a.dentist' : 'NULL AS dentist';
 
     $statement = $pdo->prepare(
-        "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status, a.notes, a.created_at,
+        "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.{$serviceColumn} AS service_type, a.status, a.notes, a.created_at, {$sourceSelect}, {$dentistSelect},
                 p.patient_no, p.fullname AS patient_name, p.contact_number
          FROM appointments a
          INNER JOIN patients p ON p.id = a.patient_id
@@ -1463,19 +1559,27 @@ function createAppointment(array $data): int
 {
     $pdo = getDatabaseConnection();
     $serviceColumn = appointmentServiceColumn();
-
-    $statement = $pdo->prepare(
-        "INSERT INTO appointments (patient_id, appointment_date, appointment_time, {$serviceColumn}, status, notes)
-         VALUES (:patient_id, :appointment_date, :appointment_time, :service_type, :status, :notes)"
-    );
-    $statement->execute([
+    $columns = ['patient_id', 'appointment_date', 'appointment_time', $serviceColumn, 'status', 'notes'];
+    $placeholders = [':patient_id', ':appointment_date', ':appointment_time', ':service_type', ':status', ':notes'];
+    $parameters = [
         'patient_id' => (int) $data['patient_id'],
         'appointment_date' => $data['appointment_date'],
         'appointment_time' => $data['appointment_time'],
         'service_type' => $data['service_type'],
         'status' => $data['status'],
         'notes' => $data['notes'],
-    ]);
+    ];
+
+    foreach (['appointment_source', 'dentist'] as $column) {
+        if (columnExists('appointments', $column)) {
+            $columns[] = $column;
+            $placeholders[] = ':' . $column;
+            $parameters[$column] = $data[$column] ?? '';
+        }
+    }
+
+    $statement = $pdo->prepare('INSERT INTO appointments (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+    $statement->execute($parameters);
 
     return (int) $pdo->lastInsertId();
 }
@@ -1484,18 +1588,15 @@ function updateAppointment(int $appointmentId, array $data): void
 {
     $pdo = getDatabaseConnection();
     $serviceColumn = appointmentServiceColumn();
-
-    $statement = $pdo->prepare(
-        "UPDATE appointments
-         SET patient_id = :patient_id,
-             appointment_date = :appointment_date,
-             appointment_time = :appointment_time,
-             {$serviceColumn} = :service_type,
-             status = :status,
-             notes = :notes
-         WHERE id = :id"
-    );
-    $statement->execute([
+    $sets = [
+        'patient_id = :patient_id',
+        'appointment_date = :appointment_date',
+        'appointment_time = :appointment_time',
+        $serviceColumn . ' = :service_type',
+        'status = :status',
+        'notes = :notes',
+    ];
+    $parameters = [
         'patient_id' => (int) $data['patient_id'],
         'appointment_date' => $data['appointment_date'],
         'appointment_time' => $data['appointment_time'],
@@ -1503,7 +1604,17 @@ function updateAppointment(int $appointmentId, array $data): void
         'status' => $data['status'],
         'notes' => $data['notes'],
         'id' => $appointmentId,
-    ]);
+    ];
+
+    foreach (['appointment_source', 'dentist'] as $column) {
+        if (columnExists('appointments', $column)) {
+            $sets[] = $column . ' = :' . $column;
+            $parameters[$column] = $data[$column] ?? '';
+        }
+    }
+
+    $statement = $pdo->prepare('UPDATE appointments SET ' . implode(', ', $sets) . ' WHERE id = :id');
+    $statement->execute($parameters);
 }
 
 function updateAppointmentStatus(int $appointmentId, string $status): void

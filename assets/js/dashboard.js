@@ -287,6 +287,16 @@ content.addEventListener('change', (event) => {
     if (serviceSelect && amountInput) {
         amountInput.value = serviceSelect.selectedOptions?.[0]?.dataset.price || '';
     }
+
+    const birthdateInput = event.target.closest && event.target.closest('[data-birthdate]');
+    if (birthdateInput) {
+        updatePatientAge(birthdateInput.closest('form'));
+    }
+
+    const hmoInput = event.target.closest && event.target.closest('[name="has_hmo"]');
+    if (hmoInput) {
+        updateHmoFields(hmoInput.closest('form'));
+    }
 });
 
 content.addEventListener('click', async (event) => {
@@ -297,16 +307,25 @@ content.addEventListener('click', async (event) => {
     const cancelButton = event.target.closest('[data-cancel-appointment]');
     const viewButton = event.target.closest('[data-view-patient]');
     const editButton = event.target.closest('[data-edit-patient]');
+    const scheduleButton = event.target.closest('[data-schedule-patient]');
     const editAppointmentButton = event.target.closest('[data-edit-appointment]');
+    const tabButton = event.target.closest('[data-tab-target]');
 
     if (sectionButton) {
         loadSection(sectionButton.dataset.section);
+    }
+
+    if (tabButton) {
+        activateFormTab(tabButton);
+        return;
     }
 
     if (toggleButton) {
         const panel = document.querySelector(`#${toggleButton.dataset.togglePanel}`);
         if (panel) {
             panel.hidden = !panel.hidden;
+            panel.querySelector('[data-birthdate]') && updatePatientAge(panel.querySelector('form'));
+            panel.querySelector('[name="has_hmo"]') && updateHmoFields(panel.querySelector('form'));
         }
     }
 
@@ -349,23 +368,23 @@ content.addEventListener('click', async (event) => {
 
     if (viewButton) {
         const patient = JSON.parse(viewButton.dataset.viewPatient);
-        alert(`${patient.patient_no}\n${patient.fullname}\nAge: ${patient.age}\nContact: ${patient.contact_number}\nEmail: ${patient.email || ''}\nAddress: ${patient.address || ''}`);
+        renderPatientProfile(patient);
     }
 
     if (editButton) {
         const patient = JSON.parse(editButton.dataset.editPatient);
         const panel = document.querySelector('#patientEditPanel');
-        document.querySelector('#editPatientId').value = patient.id || '';
-        document.querySelector('#editPatientFullname').value = patient.fullname || '';
-        document.querySelector('#editPatientBirthdate').value = patient.birthdate || '';
-        document.querySelector('#editPatientGender').value = patient.gender || 'Male';
-        document.querySelector('#editPatientContact').value = patient.contact_number || '';
-        document.querySelector('#editPatientEmail').value = patient.email || '';
-        document.querySelector('#editPatientAddress').value = patient.address || '';
+        fillPatientForm(panel?.querySelector('form'), patient);
         if (panel) {
             panel.hidden = false;
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+    }
+
+    if (scheduleButton) {
+        const patient = JSON.parse(scheduleButton.dataset.schedulePatient);
+        loadSection('appointments', { patient_id: patient.id || '' });
+        return;
     }
 
     const editServiceButton = event.target.closest('[data-edit-service]');
@@ -389,9 +408,11 @@ content.addEventListener('click', async (event) => {
         const appointment = JSON.parse(editAppointmentButton.dataset.editAppointment);
         document.querySelector('#editAppointmentId').value = appointment.id || '';
         document.querySelector('#editAppointmentPatient').value = appointment.patient_id || '';
+        document.querySelector('#editAppointmentSource').value = appointment.appointment_source || 'Walk-In';
         document.querySelector('#editAppointmentService').value = appointment.service_type || '';
         document.querySelector('#editAppointmentDate').value = appointment.appointment_date || '';
         document.querySelector('#editAppointmentTime').value = (appointment.appointment_time || '').slice(0, 5);
+        document.querySelector('#editAppointmentDentist').value = appointment.dentist || '';
         document.querySelector('#editAppointmentStatus').value = appointment.status || 'pending';
         document.querySelector('#editAppointmentNotes').value = appointment.notes || '';
         document.querySelector('#editAppointmentId')?.closest('.dashboard-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -415,6 +436,7 @@ content.addEventListener('submit', async (event) => {
 
     event.preventDefault();
     const button = ajaxForm.querySelector('button[type="submit"]');
+    syncPatientFullname(ajaxForm);
     const data = new FormData(ajaxForm);
     data.append('action', ajaxForm.dataset.action);
 
@@ -438,6 +460,171 @@ content.addEventListener('submit', async (event) => {
 
         ajaxForm.reset();
         loadSection(activeSection);
+    }
+});
+
+content.addEventListener('input', (event) => {
+    const namePart = event.target.closest && event.target.closest('[data-name-part]');
+    const birthdateInput = event.target.closest && event.target.closest('[data-birthdate]');
+
+    if (namePart) {
+        syncPatientFullname(namePart.closest('form'));
+    }
+
+    if (birthdateInput) {
+        updatePatientAge(birthdateInput.closest('form'));
+    }
+});
+
+function activateFormTab(button) {
+    const tabs = button.closest('[data-tabs]');
+    if (!tabs) {
+        return;
+    }
+
+    const target = button.dataset.tabTarget;
+    tabs.querySelectorAll('[data-tab-target]').forEach((item) => {
+        item.classList.toggle('active', item === button);
+    });
+    tabs.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.tabPanel === target);
+    });
+}
+
+function syncPatientFullname(form) {
+    if (!form) {
+        return;
+    }
+
+    const target = form.querySelector('[data-fullname-target]');
+    if (!target) {
+        return;
+    }
+
+    const parts = ['first_name', 'middle_name', 'last_name', 'suffix']
+        .map((name) => form.querySelector(`[name="${name}"]`)?.value.trim() || '')
+        .filter(Boolean);
+    target.value = parts.join(' ');
+}
+
+function updatePatientAge(form) {
+    if (!form) {
+        return;
+    }
+
+    const birthdate = form.querySelector('[data-birthdate]')?.value;
+    const output = form.querySelector('[data-age-output]');
+
+    if (!birthdate || !output) {
+        return;
+    }
+
+    const birth = new Date(`${birthdate}T00:00:00`);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age -= 1;
+    }
+
+    output.value = Number.isFinite(age) && age >= 0 ? String(age) : '';
+}
+
+function updateHmoFields(form) {
+    if (!form) {
+        return;
+    }
+
+    const enabled = form.querySelector('[name="has_hmo"]:checked')?.value === 'Yes';
+    const fields = form.querySelector('[data-hmo-fields]');
+
+    if (fields) {
+        fields.hidden = !enabled;
+    }
+}
+
+function fillPatientForm(form, patient) {
+    if (!form) {
+        return;
+    }
+
+    form.querySelector('[name="id"]').value = patient.id || '';
+    const fallbackNameParts = String(patient.fullname || '').trim().split(/\s+/).filter(Boolean);
+    const fallbackFirstName = patient.first_name || fallbackNameParts.shift() || '';
+    const fallbackLastName = patient.last_name || fallbackNameParts.join(' ');
+    const values = {
+        fullname: patient.fullname || '',
+        first_name: fallbackFirstName,
+        middle_name: patient.middle_name || '',
+        last_name: fallbackLastName,
+        suffix: patient.suffix || '',
+        birthdate: patient.birthdate || '',
+        gender: patient.gender || 'Male',
+        contact_number: patient.contact_number || '',
+        email: patient.email || '',
+        address: patient.address || '',
+        emergency_contact: patient.emergency_contact || '',
+        emergency_contact_number: patient.emergency_contact_number || '',
+        hmo_provider: patient.hmo_provider || '',
+        hmo_card_number: patient.hmo_card_number || '',
+        hmo_type: patient.hmo_type || '',
+        hmo_expiration_date: patient.hmo_expiration_date || '',
+        allergies: patient.allergies || '',
+        medical_conditions: patient.medical_conditions || '',
+        current_medications: patient.current_medications || '',
+        medical_notes: patient.medical_notes || '',
+    };
+
+    Object.entries(values).forEach(([name, value]) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field) {
+            field.value = value;
+        }
+    });
+
+    const hasHmo = (patient.has_hmo || 'No') === 'Yes';
+    const hmoRadio = form.querySelector(`[name="has_hmo"][value="${hasHmo ? 'Yes' : 'No'}"]`);
+    if (hmoRadio) hmoRadio.checked = true;
+
+    syncPatientFullname(form);
+    updatePatientAge(form);
+    updateHmoFields(form);
+}
+
+function detailValue(value) {
+    return value ? escapeHtml(value) : '<span class="muted">Not recorded</span>';
+}
+
+function renderPatientProfile(patient) {
+    const panel = document.querySelector('[data-patient-profile]');
+    if (!panel) {
+        return;
+    }
+
+    const hasHmo = (patient.has_hmo || 'No') === 'Yes';
+    panel.hidden = false;
+    panel.innerHTML = `
+        <div class="card-header">
+            <div><h2>${escapeHtml(patient.fullname || 'Patient Profile')}</h2><p class="muted">${escapeHtml(patient.patient_no || '')}</p></div>
+            <button class="button button-small button-light" type="button" data-profile-close>Close</button>
+        </div>
+        <div class="profile-card-grid">
+            <article><h3>Personal Information</h3><p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
+            <article><h3>Contact Information</h3><p>${detailValue(patient.contact_number)}</p><p>${detailValue(patient.email)}</p><p>${detailValue(patient.address)}</p><p>Emergency: ${detailValue(patient.emergency_contact)} ${patient.emergency_contact_number ? `(${escapeHtml(patient.emergency_contact_number)})` : ''}</p></article>
+            <article><h3>HMO Information</h3><p>${hasHmo ? 'With HMO' : 'No HMO'}</p><p>${detailValue(patient.hmo_provider)}</p><p>${detailValue(patient.hmo_card_number)}</p><p>${detailValue(patient.hmo_type)}</p></article>
+            <article><h3>Medical Information</h3><p>Allergies: ${detailValue(patient.allergies)}</p><p>Conditions: ${detailValue(patient.medical_conditions)}</p><p>Medications: ${detailValue(patient.current_medications)}</p><p>Notes: ${detailValue(patient.medical_notes)}</p></article>
+            <article><h3>Appointment History</h3><p class="muted">Open Appointments to review dated records.</p></article>
+            <article><h3>No Show History</h3><p><strong>${escapeHtml(patient.no_show_count || 0)}</strong> recorded no-show/cancelled visit${Number(patient.no_show_count || 0) === 1 ? '' : 's'}.</p></article>
+        </div>
+    `;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+content.addEventListener('click', (event) => {
+    if (event.target.closest('[data-profile-close]')) {
+        const panel = document.querySelector('[data-patient-profile]');
+        if (panel) panel.hidden = true;
     }
 });
 
