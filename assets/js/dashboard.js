@@ -147,15 +147,38 @@ function clearAvatarCrop() {
     if (photoInput) photoInput.value = '';
 }
 
+const validDashboardSections = ['dashboard', 'patients', 'appointments', 'billing', 'services', 'records', 'users', 'reports', 'settings'];
 const savedSection = localStorage.getItem('adminActiveSection');
-let activeSection = window.dashboardConfig?.defaultSection || savedSection || 'dashboard';
+const urlSection = new URLSearchParams(window.location.search).get('section') || '';
+let activeSection = validDashboardSections.includes(urlSection)
+    ? urlSection
+    : savedSection || window.dashboardConfig?.defaultSection || 'dashboard';
 
 if (localStorage.getItem('sidebarCollapsed') === 'true') {
     document.body.classList.add('sidebar-collapsed');
 }
 
+function updateSidebarToggleLabel() {
+    if (!sidebarToggle) {
+        return;
+    }
+
+    const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+    const label = isCollapsed ? 'Open sidebar' : 'Close sidebar';
+    sidebarToggle.setAttribute('aria-label', label);
+    sidebarToggle.setAttribute('title', label);
+}
+
+updateSidebarToggleLabel();
+
 async function loadSection(section, params = {}) {
     activeSection = section;
+    if (!params || Object.keys(params).length === 0) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('section', section);
+        url.hash = '';
+        window.history.replaceState(null, '', url.toString());
+    }
     // clean up any existing Chart.js instances to avoid leaks and layout issues
     try {
         if (window._clinicCharts) {
@@ -652,6 +675,7 @@ sidebarToggle?.addEventListener('click', (event) => {
     event.stopPropagation();
     const collapsed = document.body.classList.toggle('sidebar-collapsed');
     localStorage.setItem('sidebarCollapsed', String(collapsed));
+    updateSidebarToggleLabel();
 });
 
 // Notifications

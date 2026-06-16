@@ -9,6 +9,21 @@ $user = currentUser();
 $csrfToken = generateCsrfToken();
 $profilePhoto = profilePhotoUrl($user, '../');
 $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
+$sections = [
+    'dashboard' => ['Dashboard', 'Loading clinic overview...'],
+    'patients' => ['Patients', 'Search, add, edit, and archive patient records.'],
+    'appointments' => ['Appointments', 'Book, reschedule, cancel, and monitor patient visits.'],
+    'billing' => ['Billing', 'Generate bills, record payments, and print receipts.'],
+    'services' => ['Services', 'Create, update, and price clinic treatments.'],
+    'records' => ['Dental Records', 'All dental record entries for your patients.'],
+    'users' => ['Users', 'Manage receptionist accounts and password access.'],
+    'reports' => ['Reports', 'High-level clinic summaries.'],
+    'settings' => ['Settings', 'System preferences and account information.'],
+];
+$requestedSection = (string) ($_GET['section'] ?? 'dashboard');
+$initialSection = array_key_exists($requestedSection, $sections) ? $requestedSection : 'dashboard';
+$initialTitle = $sections[$initialSection][0];
+$initialSubtitle = $sections[$initialSection][1];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,9 +34,24 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/../assets/css/style.css')) ?>">
     <script>
+        (() => {
+            const validSections = <?= json_encode(array_keys($sections)) ?>;
+            const url = new URL(window.location.href);
+            const hasSection = validSections.includes(url.searchParams.get('section'));
+            const hashSection = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : '';
+            const storedSection = localStorage.getItem('adminActiveSection') || '';
+            const fallbackSection = validSections.includes(hashSection) ? hashSection : storedSection;
+
+            if (!hasSection && validSections.includes(fallbackSection) && fallbackSection !== 'dashboard') {
+                url.searchParams.set('section', fallbackSection);
+                url.hash = '';
+                window.location.replace(url.toString());
+            }
+        })();
+
         window.dashboardConfig = {
             csrfToken: '<?= e($csrfToken) ?>',
-            defaultSection: 'dashboard'
+            defaultSection: '<?= e($initialSection) ?>'
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
@@ -30,51 +60,53 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
 <body class="admin-dashboard-body">
     <div class="admin-layout spa-layout">
         <aside class="admin-sidebar fixed-sidebar" aria-label="Admin navigation">
-            <div class="sidebar-brand" data-dashboard-home>
-                <img src="<?= e(clinicLogoUrl('../')) ?>" alt="AC Ave. Dental Clinic" data-clinic-logo>
-                <div>
-                    <strong>AC Ave.</strong>
-                    <span>Dental Clinic</span>
-                </div>
-                <button class="sidebar-toggle sidebar-brand-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" data-sidebar-toggle>
+            <div class="sidebar-brand">
+                <button class="sidebar-home" type="button" data-dashboard-home>
+                    <img src="<?= e(clinicLogoUrl('../')) ?>" alt="AC Ave. Dental Clinic" data-clinic-logo>
+                    <span>
+                        <strong>AC Ave.</strong>
+                        <span>Dental Clinic</span>
+                    </span>
+                </button>
+                <button class="sidebar-toggle sidebar-brand-toggle" type="button" aria-label="Close sidebar" title="Close sidebar" data-sidebar-toggle>
                     <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
                 </button>
             </div>
 
             <nav class="sidebar-nav" data-dashboard-nav>
-                <button class="active" type="button" data-section="dashboard">
+                <button class="<?= $initialSection === 'dashboard' ? 'active' : '' ?>" type="button" data-section="dashboard">
                     <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
                     <span>Dashboard</span>
                 </button>
-                <button type="button" data-section="patients">
+                <button class="<?= $initialSection === 'patients' ? 'active' : '' ?>" type="button" data-section="patients">
                     <i class="fa-solid fa-hospital-user" aria-hidden="true"></i>
                     <span>Patients</span>
                 </button>
-                <button type="button" data-section="appointments">
+                <button class="<?= $initialSection === 'appointments' ? 'active' : '' ?>" type="button" data-section="appointments">
                     <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
                     <span>Appointments</span>
                 </button>
-                <button type="button" data-section="billing">
+                <button class="<?= $initialSection === 'billing' ? 'active' : '' ?>" type="button" data-section="billing">
                     <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i>
                     <span>Billing</span>
                 </button>
-                <button type="button" data-section="services">
+                <button class="<?= $initialSection === 'services' ? 'active' : '' ?>" type="button" data-section="services">
                     <i class="fa-solid fa-tooth" aria-hidden="true"></i>
                     <span>Services</span>
                 </button>
-                <button type="button" data-section="records">
+                <button class="<?= $initialSection === 'records' ? 'active' : '' ?>" type="button" data-section="records">
                     <i class="fa-solid fa-notes-medical" aria-hidden="true"></i>
                     <span>Dental Records</span>
                 </button>
-                <button type="button" data-section="users">
+                <button class="<?= $initialSection === 'users' ? 'active' : '' ?>" type="button" data-section="users">
                     <i class="fa-solid fa-user-gear" aria-hidden="true"></i>
                     <span>Users</span>
                 </button>
-                <button type="button" data-section="reports">
+                <button class="<?= $initialSection === 'reports' ? 'active' : '' ?>" type="button" data-section="reports">
                     <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
                     <span>Reports</span>
                 </button>
-                <button type="button" data-section="settings">
+                <button class="<?= $initialSection === 'settings' ? 'active' : '' ?>" type="button" data-section="settings">
                     <i class="fa-solid fa-gear" aria-hidden="true"></i>
                     <span>Settings</span>
                 </button>
@@ -91,8 +123,8 @@ $initial = strtoupper(substr((string) ($user['fullname'] ?? 'A'), 0, 1));
                 <div class="topbar-title-row">
                     <div>
                         <p class="eyebrow">AC Ave. Dental Clinic</p>
-                        <h1 id="sectionTitle">Dashboard</h1>
-                        <p class="muted" id="sectionSubtitle">Loading clinic overview...</p>
+                        <h1 id="sectionTitle"><?= e($initialTitle) ?></h1>
+                        <p class="muted" id="sectionSubtitle"><?= e($initialSubtitle) ?></p>
                     </div>
                 </div>
 
