@@ -1392,6 +1392,10 @@ th {
     margin-left: 0;
 }
 
+.sidebar-collapsed .tablet-form-panel {
+    left: calc(92px + 24px);
+}
+
 .sidebar-collapsed .sidebar-nav a,
 .sidebar-collapsed .sidebar-nav button,
 .sidebar-collapsed .sidebar-logout {
@@ -2082,19 +2086,62 @@ th {
 
 .tablet-form-panel {
     box-sizing: border-box;
-    width: 100%;
-    min-height: 620px;
-    padding: 14px;
+    position: fixed;
+    top: 84px;
+    right: 24px;
+    bottom: auto;
+    left: calc(280px + 24px);
+    z-index: 125;
+    width: auto;
+    max-width: 1120px;
+    min-height: 0;
+    max-height: calc(100vh - 108px);
+    padding: 12px;
     border: 1px solid rgba(238, 228, 120, 0.7);
     border-radius: 16px;
     background: #fffef7;
-    overflow-x: clip;
+    box-shadow: 0 28px 80px rgba(17, 17, 17, 0.24);
+    overflow: hidden;
+}
+
+.tablet-form-panel[hidden] {
+    display: none;
+}
+
+.tablet-form-panel .admin-form {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    height: 100%;
+    max-height: calc(100vh - 132px);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.tablet-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 4px 8px;
+    border-bottom: 1px solid rgba(238, 228, 120, 0.58);
+}
+
+.tablet-form-header h3 {
+    margin: 0;
+    font-size: 1.12rem;
 }
 
 .tablet-tabs {
     display: grid;
     gap: 14px;
-    min-height: 500px;
+    align-content: start;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .tab-strip {
@@ -2130,7 +2177,7 @@ th {
 
 .tab-panel.active {
     display: block;
-    min-height: 420px;
+    min-height: 0;
     animation: tabFade 160ms ease both;
 }
 
@@ -2211,11 +2258,18 @@ th {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 14px;
-    margin-bottom: 14px;
-    padding: 12px;
+    margin-bottom: 10px;
+    padding: 10px;
     border: 1px dashed rgba(169, 148, 0, 0.28);
     border-radius: 16px;
     background: #ffffff;
+}
+
+.patient-photo-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
 }
 
 .patient-photo-preview {
@@ -2236,6 +2290,30 @@ th {
     height: 100%;
     object-fit: cover;
     object-position: center;
+}
+
+.patient-camera {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.patient-camera[hidden] {
+    display: none;
+}
+
+.patient-camera video {
+    width: min(360px, 100%);
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    background: #111111;
+    object-fit: cover;
+}
+
+.patient-camera-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .profile-patient-photo {
@@ -2302,7 +2380,10 @@ th {
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 14px;
+    margin-top: 0;
+    padding-top: 10px;
+    border-top: 1px solid rgba(238, 228, 120, 0.58);
+    background: #fffef7;
 }
 
 .tablet-table th,
@@ -2409,6 +2490,12 @@ th {
     .profile-card-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .tablet-form-panel {
+        right: 18px;
+        top: 76px;
+        max-height: calc(100vh - 96px);
+    }
 }
 
 @media (max-width: 980px) {
@@ -2452,6 +2539,13 @@ th {
 
     .patient-filter-bar {
         grid-template-columns: 1fr;
+    }
+
+    .tablet-form-panel {
+        left: 16px;
+        right: 16px;
+        top: 16px;
+        max-height: calc(100vh - 32px);
     }
 }
 

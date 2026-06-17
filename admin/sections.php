@@ -52,7 +52,18 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
                 </span>
                 <div class="form-group">
                     <label>Patient Photo <span class="field-info" data-tip="Upload a patient photo or use tablet camera when available.">i</span></label>
-                    <input type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                    <div class="patient-photo-actions">
+                        <input type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                        <button class="button button-small button-light" type="button" data-camera-start><i class="fa-solid fa-camera" aria-hidden="true"></i> Take Photo</button>
+                    </div>
+                    <div class="patient-camera" data-patient-camera hidden>
+                        <video data-patient-camera-video playsinline autoplay muted></video>
+                        <canvas data-patient-camera-canvas hidden></canvas>
+                        <div class="patient-camera-actions">
+                            <button class="button button-small" type="button" data-camera-capture>Capture</button>
+                            <button class="button button-small button-light" type="button" data-camera-close>Close Camera</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="tablet-form-grid">
@@ -174,6 +185,10 @@ if ($section === 'patients') {
 
         <div class="inline-panel tablet-form-panel" id="patientCreatePanel" hidden>
             <form class="admin-form ajax-form" data-action="create_patient">
+                <div class="tablet-form-header">
+                    <div><h3>New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
+                    <button class="icon-button" type="button" aria-label="Close patient form" data-panel-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </div>
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <?php renderPatientTabletForm(); ?>
                 <div class="form-actions"><button class="button touch-button" type="submit">Save Patient</button></div>
@@ -182,6 +197,10 @@ if ($section === 'patients') {
 
         <div class="inline-panel tablet-form-panel" id="patientEditPanel" hidden>
             <form class="admin-form ajax-form" data-action="update_patient">
+                <div class="tablet-form-header">
+                    <div><h3>Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
+                    <button class="icon-button" type="button" aria-label="Close patient form" data-panel-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                </div>
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <input type="hidden" name="id" id="editPatientId">
                 <?php renderPatientTabletForm([], 'editPatient'); ?>

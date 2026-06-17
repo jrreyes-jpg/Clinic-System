@@ -14,6 +14,7 @@ const avatarCropper = document.querySelector('[data-avatar-cropper]');
 const avatarCropStage = document.querySelector('[data-avatar-crop-stage]');
 const avatarCropImage = document.querySelector('[data-avatar-crop-image]');
 const avatarCropZoom = document.querySelector('[data-avatar-crop-zoom]');
+let patientCameraStream = null;
 
 const avatarCrop = {
     file: null,
@@ -172,6 +173,7 @@ function updateSidebarToggleLabel() {
 updateSidebarToggleLabel();
 
 async function loadSection(section, params = {}) {
+    stopPatientCamera();
     activeSection = section;
     if (!params || Object.keys(params).length === 0) {
         const url = new URL(window.location.href);
@@ -230,6 +232,78 @@ async function postAction(formData) {
     });
 
     return response.json();
+}
+
+async function startPatientCamera(form) {
+    if (!form) {
+        return;
+    }
+
+    const camera = form.querySelector('[data-patient-camera]');
+    const video = form.querySelector('[data-patient-camera-video]');
+
+    if (!camera || !video || !navigator.mediaDevices?.getUserMedia) {
+        alert('Camera is not available in this browser. Use upload instead.');
+        return;
+    }
+
+    stopPatientCamera();
+
+    try {
+        patientCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false,
+        });
+        video.srcObject = patientCameraStream;
+        camera.hidden = false;
+    } catch (error) {
+        alert('Camera could not be opened. Please allow camera access or use upload.');
+    }
+}
+
+function stopPatientCamera(form = null) {
+    if (patientCameraStream) {
+        patientCameraStream.getTracks().forEach((track) => track.stop());
+        patientCameraStream = null;
+    }
+
+    const scope = form || document;
+    scope.querySelectorAll?.('[data-patient-camera]').forEach((camera) => {
+        camera.hidden = true;
+        const video = camera.querySelector('[data-patient-camera-video]');
+        if (video) video.srcObject = null;
+    });
+}
+
+function capturePatientPhoto(form) {
+    if (!form) {
+        return;
+    }
+
+    const video = form.querySelector('[data-patient-camera-video]');
+    const canvas = form.querySelector('[data-patient-camera-canvas]');
+    const input = form.querySelector('[data-patient-photo-input]');
+
+    if (!video || !canvas || !input || !video.videoWidth || !video.videoHeight) {
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            return;
+        }
+
+        const file = new File([blob], `patient-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+        previewPatientPhoto(input);
+        stopPatientCamera(form);
+    }, 'image/jpeg', 0.9);
 }
 
 nav?.addEventListener('click', (event) => {
@@ -315,6 +389,10 @@ content.addEventListener('click', async (event) => {
     const scheduleButton = event.target.closest('[data-schedule-patient]');
     const editAppointmentButton = event.target.closest('[data-edit-appointment]');
     const tabButton = event.target.closest('[data-tab-target]');
+    const panelCloseButton = event.target.closest('[data-panel-close]');
+    const cameraStartButton = event.target.closest('[data-camera-start]');
+    const cameraCaptureButton = event.target.closest('[data-camera-capture]');
+    const cameraCloseButton = event.target.closest('[data-camera-close]');
 
     if (sectionButton) {
         loadSection(sectionButton.dataset.section);
@@ -325,13 +403,41 @@ content.addEventListener('click', async (event) => {
         return;
     }
 
+    if (panelCloseButton) {
+        stopPatientCamera(panelCloseButton.closest('form'));
+        const panel = panelCloseButton.closest('.tablet-form-panel');
+        if (panel) panel.hidden = true;
+        return;
+    }
+
     if (toggleButton) {
         const panel = document.querySelector(`#${toggleButton.dataset.togglePanel}`);
         if (panel) {
+            document.querySelectorAll('.tablet-form-panel').forEach((item) => {
+                if (item !== panel) {
+                    stopPatientCamera(item.querySelector('form'));
+                    item.hidden = true;
+                }
+            });
             panel.hidden = !panel.hidden;
             panel.querySelector('[data-birthdate]') && updatePatientAge(panel.querySelector('form'));
             panel.querySelector('[name="has_hmo"]') && updateHmoFields(panel.querySelector('form'));
         }
+    }
+
+    if (cameraStartButton) {
+        startPatientCamera(cameraStartButton.closest('form'));
+        return;
+    }
+
+    if (cameraCaptureButton) {
+        capturePatientPhoto(cameraCaptureButton.closest('form'));
+        return;
+    }
+
+    if (cameraCloseButton) {
+        stopPatientCamera(cameraCloseButton.closest('form'));
+        return;
     }
 
     if (archiveButton && confirm('Archive this patient record?')) {
@@ -381,8 +487,13 @@ content.addEventListener('click', async (event) => {
         const panel = document.querySelector('#patientEditPanel');
         fillPatientForm(panel?.querySelector('form'), patient);
         if (panel) {
+            document.querySelectorAll('.tablet-form-panel').forEach((item) => {
+                if (item !== panel) {
+                    stopPatientCamera(item.querySelector('form'));
+                    item.hidden = true;
+                }
+            });
             panel.hidden = false;
-            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 
