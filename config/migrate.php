@@ -113,6 +113,7 @@ $patientExtraColumns = [
     'middle_name' => "ALTER TABLE patients ADD COLUMN middle_name VARCHAR(80) NULL AFTER first_name",
     'last_name' => "ALTER TABLE patients ADD COLUMN last_name VARCHAR(80) NULL AFTER middle_name",
     'suffix' => "ALTER TABLE patients ADD COLUMN suffix VARCHAR(30) NULL AFTER last_name",
+    'patient_photo' => "ALTER TABLE patients ADD COLUMN patient_photo VARCHAR(255) NULL AFTER suffix",
     'emergency_contact' => "ALTER TABLE patients ADD COLUMN emergency_contact VARCHAR(150) NULL AFTER email",
     'emergency_contact_number' => "ALTER TABLE patients ADD COLUMN emergency_contact_number VARCHAR(30) NULL AFTER emergency_contact",
     'has_hmo' => "ALTER TABLE patients ADD COLUMN has_hmo ENUM('Yes', 'No') NOT NULL DEFAULT 'No' AFTER emergency_contact_number",

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS patients (
     middle_name VARCHAR(80) NULL,
     last_name VARCHAR(80) NULL,
     suffix VARCHAR(30) NULL,
+    patient_photo VARCHAR(255) NULL,
     birthdate DATE NOT NULL,
     age INT UNSIGNED NOT NULL DEFAULT 0,
     gender ENUM('Male', 'Female', 'Other') NOT NULL,

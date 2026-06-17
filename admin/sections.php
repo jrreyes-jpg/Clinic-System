@@ -34,59 +34,69 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
     [$firstName, $middleName, $lastName, $suffix] = patientNameParts($patient);
     $hasHmo = ((string) ($patient['has_hmo'] ?? 'No')) === 'Yes';
     $idPrefix = $prefix === '' ? 'patient' : $prefix;
+    $today = date('Y-m-d');
     ?>
     <input type="hidden" name="fullname" data-fullname-target value="<?= e($patient['fullname'] ?? '') ?>">
     <div class="tablet-tabs" data-tabs>
         <div class="tab-strip" role="tablist">
-            <button class="active" type="button" data-tab-target="personal">Personal</button>
-            <button type="button" data-tab-target="contact">Contact</button>
-            <button type="button" data-tab-target="hmo">HMO</button>
-            <button type="button" data-tab-target="medical">Medical</button>
+            <button class="active" type="button" data-tab-target="personal">Personal <span class="field-info" data-tip="Basic identity details and patient photo.">i</span></button>
+            <button type="button" data-tab-target="contact">Contact <span class="field-info" data-tip="Phone, email, address, and emergency contact.">i</span></button>
+            <button type="button" data-tab-target="hmo">HMO <span class="field-info" data-tip="Insurance details. HMO fields only show when Yes is selected.">i</span></button>
+            <button type="button" data-tab-target="medical">Medical <span class="field-info" data-tip="Clinical notes used for safer patient handling.">i</span></button>
         </div>
 
         <div class="tab-panel active" data-tab-panel="personal">
+            <div class="patient-photo-field">
+                <span class="patient-photo-preview" data-patient-photo-preview>
+                    <?php if (!empty($patient['patient_photo'])): ?><img src="../<?= e($patient['patient_photo']) ?>" alt="<?= e($patient['fullname'] ?? 'Patient') ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
+                </span>
+                <div class="form-group">
+                    <label>Patient Photo <span class="field-info" data-tip="Upload a patient photo or use tablet camera when available.">i</span></label>
+                    <input type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                </div>
+            </div>
             <div class="tablet-form-grid">
-                <div class="form-group"><label>First Name</label><input name="first_name" data-name-part value="<?= e($firstName) ?>" required></div>
-                <div class="form-group"><label>Middle Name</label><input name="middle_name" data-name-part value="<?= e($middleName) ?>"></div>
-                <div class="form-group"><label>Last Name</label><input name="last_name" data-name-part value="<?= e($lastName) ?>" required></div>
-                <div class="form-group"><label>Suffix</label><input name="suffix" data-name-part value="<?= e($suffix) ?>" placeholder="Jr., III"></div>
-                <div class="form-group"><label>Birthdate</label><input type="date" name="birthdate" data-birthdate value="<?= e($patient['birthdate'] ?? '') ?>" required></div>
-                <div class="form-group"><label>Age</label><input name="age_display" data-age-output value="<?= e((string) ($patient['age'] ?? '')) ?>" readonly></div>
-                <div class="form-group"><label>Sex</label><select name="gender" required><?php $gender = $patient['gender'] ?? ''; ?><option value="">Select</option><option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option><option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option><option value="Other" <?= $gender === 'Other' ? 'selected' : '' ?>>Other</option></select></div>
+                <div class="form-group"><label>First Name <span class="field-info" data-tip="Patient given name.">i</span></label><input name="first_name" data-name-part value="<?= e($firstName) ?>" required></div>
+                <div class="form-group"><label>Middle Name <span class="field-info" data-tip="Optional middle name.">i</span></label><input name="middle_name" data-name-part value="<?= e($middleName) ?>"></div>
+                <div class="form-group"><label>Last Name <span class="field-info" data-tip="Patient family name.">i</span></label><input name="last_name" data-name-part value="<?= e($lastName) ?>" required></div>
+                <div class="form-group"><label>Suffix <span class="field-info" data-tip="Optional suffix like Jr., Sr., III.">i</span></label><input name="suffix" data-name-part value="<?= e($suffix) ?>" placeholder="Jr., III"></div>
+                <div class="form-group"><label>Birthdate <span class="field-info" data-tip="Future dates are blocked. Age is calculated automatically.">i</span></label><input type="date" name="birthdate" data-birthdate max="<?= e($today) ?>" value="<?= e($patient['birthdate'] ?? '') ?>" required></div>
+                <div class="form-group"><label>Age <span class="field-info" data-tip="Auto-calculated from birthdate.">i</span></label><input name="age_display" data-age-output value="<?= e((string) ($patient['age'] ?? '')) ?>" readonly></div>
+                <div class="form-group"><label>Sex <span class="field-info" data-tip="Required patient sex field.">i</span></label><select name="gender" required><?php $gender = $patient['gender'] ?? ''; ?><option value="">Select</option><option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option><option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option><option value="Other" <?= $gender === 'Other' ? 'selected' : '' ?>>Other</option></select></div>
             </div>
         </div>
 
         <div class="tab-panel" data-tab-panel="contact">
             <div class="tablet-form-grid">
-                <div class="form-group"><label>Contact Number</label><input name="contact_number" value="<?= e($patient['contact_number'] ?? '') ?>" required></div>
-                <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= e($patient['email'] ?? '') ?>"></div>
-                <div class="form-group form-group-wide"><label>Address</label><input name="address" value="<?= e($patient['address'] ?? '') ?>"></div>
-                <div class="form-group"><label>Emergency Contact</label><input name="emergency_contact" value="<?= e($patient['emergency_contact'] ?? '') ?>"></div>
-                <div class="form-group"><label>Emergency Contact Number</label><input name="emergency_contact_number" value="<?= e($patient['emergency_contact_number'] ?? '') ?>"></div>
+                <div class="form-group"><label>Contact Number <span class="field-info" data-tip="Primary number for reminders and calls.">i</span></label><input name="contact_number" value="<?= e($patient['contact_number'] ?? '') ?>" required></div>
+                <div class="form-group"><label>Email <span class="field-info" data-tip="Optional email for clinic communication.">i</span></label><input type="email" name="email" value="<?= e($patient['email'] ?? '') ?>"></div>
+                <div class="form-group form-group-wide"><label>Address <span class="field-info" data-tip="Patient home or mailing address.">i</span></label><input name="address" value="<?= e($patient['address'] ?? '') ?>"></div>
+                <div class="form-group"><label>Emergency Contact <span class="field-info" data-tip="Person to contact during urgent situations.">i</span></label><input name="emergency_contact" value="<?= e($patient['emergency_contact'] ?? '') ?>"></div>
+                <div class="form-group"><label>Emergency Contact Number <span class="field-info" data-tip="Phone number of emergency contact.">i</span></label><input name="emergency_contact_number" value="<?= e($patient['emergency_contact_number'] ?? '') ?>"></div>
             </div>
         </div>
 
         <div class="tab-panel" data-tab-panel="hmo">
             <div class="segmented-field" data-hmo-toggle>
-                <span>Has HMO?</span>
-                <label><input type="radio" name="has_hmo" value="Yes" <?= $hasHmo ? 'checked' : '' ?>> Yes</label>
-                <label><input type="radio" name="has_hmo" value="No" <?= !$hasHmo ? 'checked' : '' ?>> No</label>
+                <span>Has HMO? <span class="field-info" data-tip="Choose Yes only when patient will use HMO details for billing/coverage.">i</span></span>
+                <label><input type="radio" name="has_hmo" value="Yes" <?= $hasHmo ? 'checked' : '' ?>><span>Yes</span></label>
+                <label><input type="radio" name="has_hmo" value="No" <?= !$hasHmo ? 'checked' : '' ?>><span>No</span></label>
             </div>
             <div class="tablet-form-grid hmo-fields" data-hmo-fields <?= $hasHmo ? '' : 'hidden' ?>>
-                <div class="form-group"><label>HMO Provider</label><input name="hmo_provider" value="<?= e($patient['hmo_provider'] ?? '') ?>"></div>
-                <div class="form-group"><label>HMO Card Number</label><input name="hmo_card_number" value="<?= e($patient['hmo_card_number'] ?? '') ?>"></div>
-                <div class="form-group"><label>Principal / Dependent</label><select name="hmo_type"><option value="">Select</option><?php $hmoType = $patient['hmo_type'] ?? ''; ?><option value="Principal" <?= $hmoType === 'Principal' ? 'selected' : '' ?>>Principal</option><option value="Dependent" <?= $hmoType === 'Dependent' ? 'selected' : '' ?>>Dependent</option></select></div>
-                <div class="form-group"><label>Expiration Date</label><input type="date" name="hmo_expiration_date" value="<?= e($patient['hmo_expiration_date'] ?? '') ?>"></div>
-                <div class="form-group form-group-wide"><label>HMO Card Upload</label><input type="file" name="hmo_card_upload" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="muted">Upload field is ready for workflow; run migration/storage setup to persist files.</small></div>
+                <div class="form-group"><label>HMO Provider <span class="field-info" data-tip="Name of HMO provider.">i</span></label><input name="hmo_provider" value="<?= e($patient['hmo_provider'] ?? '') ?>"></div>
+                <div class="form-group"><label>HMO Card Number <span class="field-info" data-tip="Card/member number printed on HMO card.">i</span></label><input name="hmo_card_number" value="<?= e($patient['hmo_card_number'] ?? '') ?>"></div>
+                <div class="form-group"><label>Principal / Dependent <span class="field-info" data-tip="Whether patient is main member or dependent.">i</span></label><select name="hmo_type"><option value="">Select</option><?php $hmoType = $patient['hmo_type'] ?? ''; ?><option value="Principal" <?= $hmoType === 'Principal' ? 'selected' : '' ?>>Principal</option><option value="Dependent" <?= $hmoType === 'Dependent' ? 'selected' : '' ?>>Dependent</option></select></div>
+                <div class="form-group"><label>Expiration Date <span class="field-info" data-tip="HMO validity expiration.">i</span></label><input type="date" name="hmo_expiration_date" value="<?= e($patient['hmo_expiration_date'] ?? '') ?>"></div>
+                <div class="form-group form-group-wide"><label>HMO Card Upload <span class="field-info" data-tip="Photo or PDF copy of HMO card.">i</span></label><input type="file" name="hmo_card_upload" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="muted">JPG, PNG, WEBP, or PDF.</small></div>
             </div>
         </div>
 
         <div class="tab-panel" data-tab-panel="medical">
             <div class="tablet-form-grid">
-                <div class="form-group"><label>Allergies</label><textarea name="allergies" rows="2"><?= e($patient['allergies'] ?? '') ?></textarea></div>
-                <div class="form-group"><label>Medical Conditions</label><textarea name="medical_conditions" rows="2"><?= e($patient['medical_conditions'] ?? '') ?></textarea></div>
-                <div class="form-group"><label>Current Medications</label><textarea name="current_medications" rows="2"><?= e($patient['current_medications'] ?? '') ?></textarea></div>
-                <div class="form-group"><label>Notes</label><textarea name="medical_notes" rows="2"><?= e($patient['medical_notes'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Allergies <span class="field-info" data-tip="Known allergies relevant to care.">i</span></label><textarea name="allergies" rows="2"><?= e($patient['allergies'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Medical Conditions <span class="field-info" data-tip="Existing conditions the dentist should know.">i</span></label><textarea name="medical_conditions" rows="2"><?= e($patient['medical_conditions'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Current Medications <span class="field-info" data-tip="Current medicines or supplements.">i</span></label><textarea name="current_medications" rows="2"><?= e($patient['current_medications'] ?? '') ?></textarea></div>
+                <div class="form-group"><label>Notes <span class="field-info" data-tip="Other medical reminders for the clinic team.">i</span></label><textarea name="medical_notes" rows="2"><?= e($patient['medical_notes'] ?? '') ?></textarea></div>
             </div>
         </div>
     </div>

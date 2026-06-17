@@ -297,6 +297,11 @@ content.addEventListener('change', (event) => {
     if (hmoInput) {
         updateHmoFields(hmoInput.closest('form'));
     }
+
+    const patientPhotoInput = event.target.closest && event.target.closest('[data-patient-photo-input]');
+    if (patientPhotoInput) {
+        previewPatientPhoto(patientPhotoInput);
+    }
 });
 
 content.addEventListener('click', async (event) => {
@@ -521,6 +526,15 @@ function updatePatientAge(form) {
 
     const birth = new Date(`${birthdate}T00:00:00`);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (birth > today) {
+        output.value = '';
+        form.querySelector('[data-birthdate]')?.setCustomValidity('Birthdate cannot be in the future.');
+        return;
+    }
+
+    form.querySelector('[data-birthdate]')?.setCustomValidity('');
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
 
@@ -529,6 +543,26 @@ function updatePatientAge(form) {
     }
 
     output.value = Number.isFinite(age) && age >= 0 ? String(age) : '';
+}
+
+function previewPatientPhoto(input) {
+    const file = input.files?.[0];
+    const form = input.closest('form');
+    const preview = form?.querySelector('[data-patient-photo-preview]');
+
+    if (!file || !preview) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+        preview.textContent = '';
+        const image = document.createElement('img');
+        image.src = String(reader.result);
+        image.alt = 'Patient preview';
+        preview.appendChild(image);
+    });
+    reader.readAsDataURL(file);
 }
 
 function updateHmoFields(form) {
@@ -555,6 +589,7 @@ function fillPatientForm(form, patient) {
     const fallbackLastName = patient.last_name || fallbackNameParts.join(' ');
     const values = {
         fullname: patient.fullname || '',
+        patient_photo: patient.patient_photo || '',
         first_name: fallbackFirstName,
         middle_name: patient.middle_name || '',
         last_name: fallbackLastName,
@@ -587,6 +622,22 @@ function fillPatientForm(form, patient) {
     const hmoRadio = form.querySelector(`[name="has_hmo"][value="${hasHmo ? 'Yes' : 'No'}"]`);
     if (hmoRadio) hmoRadio.checked = true;
 
+    const photoPreview = form.querySelector('[data-patient-photo-preview]');
+    if (photoPreview) {
+        photoPreview.textContent = '';
+        if (patient.patient_photo) {
+            const image = document.createElement('img');
+            image.src = `../${patient.patient_photo}`;
+            image.alt = patient.fullname || 'Patient';
+            photoPreview.appendChild(image);
+        } else {
+            const icon = document.createElement('i');
+            icon.className = 'fa-solid fa-user';
+            icon.setAttribute('aria-hidden', 'true');
+            photoPreview.appendChild(icon);
+        }
+    }
+
     syncPatientFullname(form);
     updatePatientAge(form);
     updateHmoFields(form);
@@ -610,7 +661,7 @@ function renderPatientProfile(patient) {
             <button class="button button-small button-light" type="button" data-profile-close>Close</button>
         </div>
         <div class="profile-card-grid">
-            <article><h3>Personal Information</h3><p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
+            <article><h3>Personal Information</h3>${patient.patient_photo ? `<img class="profile-patient-photo" src="../${escapeHtml(patient.patient_photo)}" alt="${escapeHtml(patient.fullname || 'Patient')}">` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
             <article><h3>Contact Information</h3><p>${detailValue(patient.contact_number)}</p><p>${detailValue(patient.email)}</p><p>${detailValue(patient.address)}</p><p>Emergency: ${detailValue(patient.emergency_contact)} ${patient.emergency_contact_number ? `(${escapeHtml(patient.emergency_contact_number)})` : ''}</p></article>
             <article><h3>HMO Information</h3><p>${hasHmo ? 'With HMO' : 'No HMO'}</p><p>${detailValue(patient.hmo_provider)}</p><p>${detailValue(patient.hmo_card_number)}</p><p>${detailValue(patient.hmo_type)}</p></article>
             <article><h3>Medical Information</h3><p>Allergies: ${detailValue(patient.allergies)}</p><p>Conditions: ${detailValue(patient.medical_conditions)}</p><p>Medications: ${detailValue(patient.current_medications)}</p><p>Notes: ${detailValue(patient.medical_notes)}</p></article>

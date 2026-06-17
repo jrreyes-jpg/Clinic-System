@@ -624,6 +624,7 @@ function listPatients(string $search = '', bool $includeArchived = false): array
     $parameters = [];
     $optionalColumns = [
         'first_name', 'middle_name', 'last_name', 'suffix',
+        'patient_photo',
         'emergency_contact', 'emergency_contact_number',
         'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
         'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
@@ -662,6 +663,7 @@ function findPatientById(int $patientId): ?array
     $pdo = getDatabaseConnection();
     $optionalColumns = [
         'first_name', 'middle_name', 'last_name', 'suffix',
+        'patient_photo',
         'emergency_contact', 'emergency_contact_number',
         'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
         'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
@@ -705,6 +707,7 @@ function createPatient(array $data): int
     ];
     $optionalColumns = [
         'first_name', 'middle_name', 'last_name', 'suffix',
+        'patient_photo',
         'emergency_contact', 'emergency_contact_number',
         'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
         'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
@@ -749,6 +752,7 @@ function updatePatient(int $patientId, array $data): void
     ];
     $optionalColumns = [
         'first_name', 'middle_name', 'last_name', 'suffix',
+        'patient_photo',
         'emergency_contact', 'emergency_contact_number',
         'has_hmo', 'hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date', 'hmo_card_file',
         'allergies', 'medical_conditions', 'current_medications', 'medical_notes',
@@ -1089,6 +1093,16 @@ function validatePatientData(array $data): array
 
     if (trim((string) ($data['birthdate'] ?? '')) === '') {
         $errors[] = 'Birthdate is required.';
+    } else {
+        try {
+            $birthdate = new DateTimeImmutable((string) $data['birthdate']);
+            $today = new DateTimeImmutable('today');
+            if ($birthdate > $today) {
+                $errors[] = 'Birthdate cannot be in the future.';
+            }
+        } catch (Exception $exception) {
+            $errors[] = 'Please enter a valid birthdate.';
+        }
     }
 
     if (!in_array((string) ($data['gender'] ?? ''), ['Male', 'Female', 'Other'], true)) {

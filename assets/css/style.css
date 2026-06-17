@@ -2081,15 +2081,20 @@ th {
 }
 
 .tablet-form-panel {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 620px;
     padding: 14px;
     border: 1px solid rgba(238, 228, 120, 0.7);
     border-radius: 16px;
     background: #fffef7;
+    overflow-x: clip;
 }
 
 .tablet-tabs {
     display: grid;
     gap: 14px;
+    min-height: 500px;
 }
 
 .tab-strip {
@@ -2102,6 +2107,7 @@ th {
 }
 
 .tab-strip button {
+    position: relative;
     min-height: 48px;
     border: 0;
     border-radius: 12px;
@@ -2124,6 +2130,7 @@ th {
 
 .tab-panel.active {
     display: block;
+    min-height: 420px;
     animation: tabFade 160ms ease both;
 }
 
@@ -2148,6 +2155,98 @@ th {
     font-size: 1rem;
 }
 
+.form-group:has([required]) > label::after {
+    content: " *";
+    color: #b42318;
+    font-weight: 900;
+}
+
+.field-info {
+    position: relative;
+    display: inline-grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    margin-left: 5px;
+    border-radius: 50%;
+    color: #111111;
+    background: #e7dc35;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+    cursor: help;
+}
+
+.field-info::after {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    z-index: 30;
+    width: max-content;
+    max-width: 240px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #ffffff;
+    background: #111111;
+    box-shadow: 0 14px 30px rgba(17, 17, 17, 0.18);
+    content: attr(data-tip);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 4px);
+    transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.field-info:hover::after,
+.field-info:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.patient-photo-field {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px dashed rgba(169, 148, 0, 0.28);
+    border-radius: 16px;
+    background: #ffffff;
+}
+
+.patient-photo-preview {
+    display: grid;
+    width: 86px;
+    height: 86px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    color: #6f6200;
+    background: #f3f4f6;
+    font-size: 1.7rem;
+}
+
+.patient-photo-preview img,
+.profile-patient-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.profile-patient-photo {
+    display: block;
+    width: 76px;
+    height: 76px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+    background: #f3f4f6;
+}
+
 .segmented-field,
 .segmented-control {
     display: flex;
@@ -2166,6 +2265,7 @@ th {
 
 .segmented-field label,
 .segmented-control label {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -2175,6 +2275,28 @@ th {
     border-radius: 999px;
     background: #ffffff;
     font-weight: 800;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.segmented-field label input,
+.segmented-control label input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.segmented-field label:has(input:checked),
+.segmented-control label:has(input:checked) {
+    border-color: #e7dc35;
+    background: #fff7b8;
+    box-shadow: inset 0 0 0 2px rgba(231, 220, 53, 0.65);
+}
+
+.segmented-field label:hover,
+.segmented-control label:hover {
+    transform: translateY(-1px);
 }
 
 .form-actions {
@@ -2374,6 +2496,12 @@ th {
     .profile-card-grid,
     .tablet-list-row {
         grid-template-columns: 1fr;
+    }
+
+    .patient-photo-field {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
     }
 
     .tablet-form-grid .form-group-wide {

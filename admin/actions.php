@@ -62,6 +62,44 @@ function saveHmoCardUpload(int $patientId = 0): string
     return 'assets/hmo/' . $filename;
 }
 
+function savePatientPhotoUpload(int $patientId = 0): string
+{
+    if (!isset($_FILES['patient_photo_upload']) || $_FILES['patient_photo_upload']['error'] === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+
+    if ($_FILES['patient_photo_upload']['error'] !== UPLOAD_ERR_OK) {
+        jsonResponse(false, 'Patient photo upload failed. Please choose another image.');
+    }
+
+    $tmpPath = (string) $_FILES['patient_photo_upload']['tmp_name'];
+    $imageInfo = getimagesize($tmpPath);
+    $allowedTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    if ($imageInfo === false || !isset($allowedTypes[$imageInfo['mime']])) {
+        jsonResponse(false, 'Patient photo must be a JPG, PNG, or WEBP image.');
+    }
+
+    $targetDir = __DIR__ . '/../assets/patients';
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0775, true) && !is_dir($targetDir)) {
+        jsonResponse(false, 'Patient photo upload folder could not be created.');
+    }
+
+    $prefix = $patientId > 0 ? 'patient-' . $patientId : 'patient-new';
+    $filename = $prefix . '-photo-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $allowedTypes[$imageInfo['mime']];
+    $targetPath = $targetDir . '/' . $filename;
+
+    if (!move_uploaded_file($tmpPath, $targetPath)) {
+        jsonResponse(false, 'Patient photo could not be saved.');
+    }
+
+    return 'assets/patients/' . $filename;
+}
+
 try {
     if ($action === 'create_patient') {
         $firstName = trim((string) ($_POST['first_name'] ?? ''));
@@ -69,6 +107,7 @@ try {
         $lastName = trim((string) ($_POST['last_name'] ?? ''));
         $suffix = trim((string) ($_POST['suffix'] ?? ''));
         $fullNameParts = array_filter([$firstName, $middleName, $lastName, $suffix], static fn ($part) => $part !== '');
+        $patientPhoto = savePatientPhotoUpload();
         $hmoCardFile = saveHmoCardUpload();
         $data = [
             'fullname' => trim((string) ($_POST['fullname'] ?? '')) ?: implode(' ', $fullNameParts),
@@ -76,6 +115,7 @@ try {
             'middle_name' => $middleName,
             'last_name' => $lastName,
             'suffix' => $suffix,
+            'patient_photo' => $patientPhoto,
             'birthdate' => trim((string) ($_POST['birthdate'] ?? '')),
             'gender' => (string) ($_POST['gender'] ?? ''),
             'address' => trim((string) ($_POST['address'] ?? '')),
@@ -118,6 +158,7 @@ try {
         $lastName = trim((string) ($_POST['last_name'] ?? ''));
         $suffix = trim((string) ($_POST['suffix'] ?? ''));
         $fullNameParts = array_filter([$firstName, $middleName, $lastName, $suffix], static fn ($part) => $part !== '');
+        $patientPhoto = savePatientPhotoUpload($patientId);
         $hmoCardFile = saveHmoCardUpload($patientId);
         $data = [
             'fullname' => trim((string) ($_POST['fullname'] ?? '')) ?: implode(' ', $fullNameParts),
@@ -125,6 +166,7 @@ try {
             'middle_name' => $middleName,
             'last_name' => $lastName,
             'suffix' => $suffix,
+            'patient_photo' => $patientPhoto,
             'birthdate' => trim((string) ($_POST['birthdate'] ?? '')),
             'gender' => (string) ($_POST['gender'] ?? ''),
             'address' => trim((string) ($_POST['address'] ?? '')),
@@ -149,6 +191,9 @@ try {
         }
         if ($hmoCardFile === '') {
             unset($data['hmo_card_file']);
+        }
+        if ($patientPhoto === '') {
+            unset($data['patient_photo']);
         }
         updatePatient($patientId, $data);
         createAuditLog((int) ($currentUser['id'] ?? null), 'updated patient', ['patient_id' => $patientId]);
