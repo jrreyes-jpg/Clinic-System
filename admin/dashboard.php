@@ -135,7 +135,7 @@ $initialSubtitle = $sections[$initialSection][1];
                     </div>
 
                     <div class="notifications-wrap">
-                        <button class="icon-button" type="button" aria-label="Notifications" id="notificationsToggle">
+                        <button class="icon-button" type="button" aria-label="Notifications" aria-haspopup="menu" aria-expanded="false" id="notificationsToggle">
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <span class="notification-badge" id="notificationCount" hidden>0</span>
                         </button>

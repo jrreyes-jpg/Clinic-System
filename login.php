@@ -72,7 +72,7 @@ $csrfToken = generateCsrfToken();
                         placeholder=" "
                         required
                     >
-                    <label for="username">Username</label>
+                    <label for="username">Username <span aria-hidden="true">*</span></label>
                     <small class="field-error" data-error-for="username"></small>
                 </div>
 
@@ -89,7 +89,7 @@ $csrfToken = generateCsrfToken();
                         <button type="button" class="toggle-password" aria-controls="password" aria-label="Show password">
                             <span class="eye-icon" aria-hidden="true"></span>
                         </button>
-                        <label for="password">Password</label>
+                        <label for="password">Password <span aria-hidden="true">*</span></label>
                     </div>
                     <small class="field-error" data-error-for="password"></small>
                 </div>

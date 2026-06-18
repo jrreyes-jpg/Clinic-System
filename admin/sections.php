@@ -140,11 +140,11 @@ if ($section === 'dashboard') {
                 <article class="tablet-list-row">
                     <div>
                         <strong><?= e($appointment['patient_name']) ?></strong>
-                        <span><?= e($appointment['patient_no']) ?> · <?= e($appointment['contact_number']) ?></span>
+                        <span><?= e($appointment['patient_no']) ?> &middot; <?= e($appointment['contact_number']) ?></span>
                     </div>
                     <div>
                         <strong><?= e(date('M d', strtotime((string) $appointment['appointment_date']))) ?> <?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?></strong>
-                        <span><?= e($appointment['service_type']) ?><?= $appointment['dentist'] ? ' · Dr. ' . e($appointment['dentist']) : '' ?></span>
+                        <span><?= e($appointment['service_type']) ?><?= $appointment['dentist'] ? ' &middot; Dr. ' . e($appointment['dentist']) : '' ?></span>
                     </div>
                     <span class="status-badge status-<?= e($appointment['status']) ?>"><?= e(ucfirst($appointment['status'])) ?></span>
                 </article>
@@ -167,10 +167,11 @@ if ($section === 'patients') {
     }
     sectionHeader('Patients', 'Search, add, edit, and archive patient records.');
     ?>
-    <section class="dashboard-card receptionist-workspace patient-workspace">
+    <section class="dashboard-card receptionist-workspace patient-workspace" data-patient-workspace>
+        <div data-patient-list-view>
         <div class="card-header">
             <div><h2>Patient Registration</h2><p class="muted"><?= count($patients) ?> matching patient<?= count($patients) === 1 ? '' : 's' ?></p></div>
-            <button class="button button-small touch-button" type="button" data-toggle-panel="patientCreatePanel"><i class="fa-solid fa-plus"></i> New Patient</button>
+            <button class="button button-small touch-button" type="button" data-patient-show-create><i class="fa-solid fa-plus"></i> New Patient</button>
         </div>
 
         <form class="search-bar spa-search patient-filter-bar" data-section-search="patients">
@@ -182,31 +183,6 @@ if ($section === 'patients') {
             </select>
             <button class="button button-small touch-button" type="submit">Filter</button>
         </form>
-
-        <div class="inline-panel tablet-form-panel" id="patientCreatePanel" hidden>
-            <form class="admin-form ajax-form" data-action="create_patient">
-                <div class="tablet-form-header">
-                    <div><h3>New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
-                    <button class="icon-button" type="button" aria-label="Close patient form" data-panel-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                </div>
-                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                <?php renderPatientTabletForm(); ?>
-                <div class="form-actions"><button class="button touch-button" type="submit">Save Patient</button></div>
-            </form>
-        </div>
-
-        <div class="inline-panel tablet-form-panel" id="patientEditPanel" hidden>
-            <form class="admin-form ajax-form" data-action="update_patient">
-                <div class="tablet-form-header">
-                    <div><h3>Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
-                    <button class="icon-button" type="button" aria-label="Close patient form" data-panel-close><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                </div>
-                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                <input type="hidden" name="id" id="editPatientId">
-                <?php renderPatientTabletForm([], 'editPatient'); ?>
-                <div class="form-actions"><button class="button touch-button" type="submit">Update Patient</button></div>
-            </form>
-        </div>
 
         <div class="patient-profile-panel" data-patient-profile hidden></div>
 
@@ -222,7 +198,7 @@ if ($section === 'patients') {
                         ?>
                         <tr>
                             <td><?= e($patient['patient_no']) ?></td>
-                            <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> · <?= e($patient['gender']) ?></span></td>
+                            <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> &middot; <?= e($patient['gender']) ?></span></td>
                             <td><?= e($patient['contact_number']) ?></td>
                             <td><span class="status-badge <?= $hasHmo ? 'status-completed' : 'status-pending' ?>"><?= $hasHmo ? 'With HMO' : 'No HMO' ?></span></td>
                             <td><?= e((string) $patient['no_show_count']) ?></td>
@@ -231,6 +207,32 @@ if ($section === 'patients') {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+        </div>
+
+        <div class="inline-panel tablet-form-panel patient-form-page" id="patientCreatePanel" data-patient-form-view hidden>
+            <form class="admin-form ajax-form" data-action="create_patient">
+                <div class="tablet-form-header">
+                    <div><h3>New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
+                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-arrow-left"></i> Back to Patients</button>
+                </div>
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <?php renderPatientTabletForm(); ?>
+                <div class="form-actions"><button class="button touch-button" type="submit">Save Patient</button></div>
+            </form>
+        </div>
+
+        <div class="inline-panel tablet-form-panel patient-form-page" id="patientEditPanel" data-patient-form-view hidden>
+            <form class="admin-form ajax-form" data-action="update_patient">
+                <div class="tablet-form-header">
+                    <div><h3>Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
+                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-arrow-left"></i> Back to Patients</button>
+                </div>
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <input type="hidden" name="id" id="editPatientId">
+                <?php renderPatientTabletForm([], 'editPatient'); ?>
+                <div class="form-actions"><button class="button touch-button" type="submit">Update Patient</button></div>
+            </form>
         </div>
     </section>
     <?php
@@ -339,7 +341,7 @@ if ($section === 'appointments') {
                         <?php foreach ($appointments as $appointment): ?>
                             <tr>
                                 <td><?= e(substr((string) $appointment['appointment_time'], 0, 5)) ?></td>
-                                <td><strong><?= e($appointment['patient_name']) ?></strong><br><span class="muted"><?= e($appointment['patient_no']) ?> · <?= e($appointment['contact_number']) ?></span></td>
+                                <td><strong><?= e($appointment['patient_name']) ?></strong><br><span class="muted"><?= e($appointment['patient_no']) ?> &middot; <?= e($appointment['contact_number']) ?></span></td>
                                 <td><?= e($appointment['appointment_source'] ?? 'Walk-In') ?></td>
                                 <td><?= e($appointment['dentist'] ?? '') ?></td>
                                 <td><?= e($appointment['service_type']) ?></td>
@@ -502,7 +504,7 @@ if ($section === 'billing') {
                             <td><?= e($bill['service_name']) ?></td>
                             <td><?= e(number_format((float) $bill['amount'], 2)) ?></td>
                             <td><?= e($bill['payment_status']) ?></td>
-                            <td><?= e($bill['payment_date'] ? date('Y-m-d', strtotime((string) $bill['payment_date'])) : '—') ?></td>
+                            <td><?= $bill['payment_date'] ? e(date('Y-m-d', strtotime((string) $bill['payment_date']))) : '&mdash;' ?></td>
                             <td><div class="row-actions"><button class="button button-small button-light" type="button" data-print-bill="<?= e((string) $bill['id']) ?>">Print</button></div></td>
                         </tr>
                     <?php endforeach; ?>

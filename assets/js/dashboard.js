@@ -381,6 +381,8 @@ content.addEventListener('change', (event) => {
 content.addEventListener('click', async (event) => {
     const sectionButton = event.target.closest('[data-section]');
     const toggleButton = event.target.closest('[data-toggle-panel]');
+    const patientCreateButton = event.target.closest('[data-patient-show-create]');
+    const patientBackButton = event.target.closest('[data-patient-back]');
     const archiveButton = event.target.closest('[data-archive-patient]');
     const completeButton = event.target.closest('[data-complete-appointment]');
     const cancelButton = event.target.closest('[data-cancel-appointment]');
@@ -400,6 +402,19 @@ content.addEventListener('click', async (event) => {
 
     if (tabButton) {
         activateFormTab(tabButton);
+        return;
+    }
+
+    if (patientCreateButton) {
+        const panel = document.querySelector('#patientCreatePanel');
+        panel?.querySelector('form')?.reset();
+        showPatientFormView(panel);
+        return;
+    }
+
+    if (patientBackButton) {
+        stopPatientCamera(patientBackButton.closest('form'));
+        showPatientListView();
         return;
     }
 
@@ -486,15 +501,7 @@ content.addEventListener('click', async (event) => {
         const patient = JSON.parse(editButton.dataset.editPatient);
         const panel = document.querySelector('#patientEditPanel');
         fillPatientForm(panel?.querySelector('form'), patient);
-        if (panel) {
-            document.querySelectorAll('.tablet-form-panel').forEach((item) => {
-                if (item !== panel) {
-                    stopPatientCamera(item.querySelector('form'));
-                    item.hidden = true;
-                }
-            });
-            panel.hidden = false;
-        }
+        showPatientFormView(panel);
     }
 
     if (scheduleButton) {
@@ -687,6 +694,47 @@ function updateHmoFields(form) {
     if (fields) {
         fields.hidden = !enabled;
     }
+}
+
+function showPatientListView() {
+    const workspace = document.querySelector('[data-patient-workspace]');
+    const listView = workspace?.querySelector('[data-patient-list-view]');
+
+    if (!workspace || !listView) {
+        return;
+    }
+
+    workspace.querySelectorAll('[data-patient-form-view]').forEach((panel) => {
+        stopPatientCamera(panel.querySelector('form'));
+        panel.hidden = true;
+    });
+    listView.hidden = false;
+    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showPatientFormView(panel) {
+    const workspace = document.querySelector('[data-patient-workspace]');
+    const listView = workspace?.querySelector('[data-patient-list-view]');
+
+    if (!workspace || !panel) {
+        return;
+    }
+
+    workspace.querySelectorAll('[data-patient-form-view]').forEach((item) => {
+        if (item !== panel) {
+            stopPatientCamera(item.querySelector('form'));
+            item.hidden = true;
+        }
+    });
+
+    if (listView) {
+        listView.hidden = true;
+    }
+
+    panel.hidden = false;
+    panel.querySelector('[data-birthdate]') && updatePatientAge(panel.querySelector('form'));
+    panel.querySelector('[name="has_hmo"]') && updateHmoFields(panel.querySelector('form'));
+    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function fillPatientForm(form, patient) {
@@ -1057,6 +1105,8 @@ async function fetchNotifications() {
                     if (note.meta && note.meta.appointment_id) {
                         loadSection('appointments');
                     }
+                    if (notificationsDropdown) notificationsDropdown.hidden = true;
+                    notificationsToggle?.setAttribute('aria-expanded', 'false');
                     fetchNotifications();
                 });
                 notificationsList.appendChild(item);
@@ -1110,12 +1160,32 @@ function escapeHtml(str) {
 }
 
 notificationsToggle?.addEventListener('click', (e) => {
+    e.stopPropagation();
     const open = notificationsDropdown?.hidden === false;
     if (notificationsDropdown) {
         notificationsDropdown.hidden = open;
     }
+    notificationsToggle.setAttribute('aria-expanded', String(!open));
     if (!open) {
         fetchNotifications();
+    }
+});
+
+document.addEventListener('click', (event) => {
+    if (!notificationsDropdown || notificationsDropdown.hidden) {
+        return;
+    }
+
+    if (!event.target.closest('.notifications-wrap')) {
+        notificationsDropdown.hidden = true;
+        notificationsToggle?.setAttribute('aria-expanded', 'false');
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && notificationsDropdown && !notificationsDropdown.hidden) {
+        notificationsDropdown.hidden = true;
+        notificationsToggle?.setAttribute('aria-expanded', 'false');
     }
 });
 
