@@ -317,6 +317,17 @@ function profilePhotoUrl(?array $user, string $prefix = ''): string
     return '';
 }
 
+function patientPhotoUrl(?array $patient, string $prefix = ''): string
+{
+    $photo = trim((string) ($patient['patient_photo'] ?? ''));
+
+    if ($photo !== '' && is_file(__DIR__ . '/../' . $photo)) {
+        return $prefix . $photo . '?v=' . filemtime(__DIR__ . '/../' . $photo);
+    }
+
+    return '';
+}
+
 function updateCurrentUserProfile(int $userId, string $fullname, string $email, string $mobile, string $profilePhoto = ''): void
 {
     $pdo = getDatabaseConnection();
@@ -1085,38 +1096,65 @@ function archivePatient(int $patientId): void
 
 function validatePatientData(array $data): array
 {
+    return array_values(validatePatientDataFields($data));
+}
+
+function validatePatientDataFields(array $data): array
+{
     $errors = [];
 
-    if (trim((string) ($data['fullname'] ?? '')) === '') {
-        $errors[] = 'Full name is required.';
+    if (trim((string) ($data['first_name'] ?? '')) === '') {
+        $errors['first_name'] = 'First name is required.';
+    }
+
+    if (trim((string) ($data['last_name'] ?? '')) === '') {
+        $errors['last_name'] = 'Last name is required.';
     }
 
     if (trim((string) ($data['birthdate'] ?? '')) === '') {
-        $errors[] = 'Birthdate is required.';
+        $errors['birthdate'] = 'Birthdate is required.';
     } else {
         try {
             $birthdate = new DateTimeImmutable((string) $data['birthdate']);
             $today = new DateTimeImmutable('today');
             if ($birthdate > $today) {
-                $errors[] = 'Birthdate cannot be in the future.';
+                $errors['birthdate'] = 'Birthdate cannot be in the future.';
             }
         } catch (Exception $exception) {
-            $errors[] = 'Please enter a valid birthdate.';
+            $errors['birthdate'] = 'Please enter a valid birthdate.';
         }
     }
 
     if (!in_array((string) ($data['gender'] ?? ''), ['Male', 'Female', 'Other'], true)) {
-        $errors[] = 'Please select a valid gender.';
+        $errors['gender'] = 'Please select a valid sex.';
     }
 
     if (trim((string) ($data['contact_number'] ?? '')) === '') {
-        $errors[] = 'Contact number is required.';
+        $errors['contact_number'] = 'Contact number is required.';
     }
 
     $email = trim((string) ($data['email'] ?? ''));
 
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email address.';
+        $errors['email'] = 'Please enter a valid email address.';
+    }
+
+    if ((string) ($data['has_hmo'] ?? 'No') === 'Yes') {
+        if (trim((string) ($data['hmo_provider'] ?? '')) === '') {
+            $errors['hmo_provider'] = 'HMO provider is required when HMO is Yes.';
+        }
+
+        if (trim((string) ($data['hmo_card_number'] ?? '')) === '') {
+            $errors['hmo_card_number'] = 'HMO card number is required when HMO is Yes.';
+        }
+
+        if (!in_array((string) ($data['hmo_type'] ?? ''), ['Principal', 'Dependent'], true)) {
+            $errors['hmo_type'] = 'Please select Principal or Dependent.';
+        }
+
+        if (trim((string) ($data['hmo_expiration_date'] ?? '')) === '') {
+            $errors['hmo_expiration_date'] = 'HMO expiration date is required when HMO is Yes.';
+        }
     }
 
     return $errors;

@@ -13,6 +13,32 @@ function sectionHeader(string $title, string $subtitle): void
     echo '<div class="section-meta" data-title="' . e($title) . '" data-subtitle="' . e($subtitle) . '"></div>';
 }
 
+set_exception_handler(static function (Throwable $exception): void {
+    $isDatabaseError = $exception instanceof PDOException;
+    http_response_code($isDatabaseError ? 503 : 500);
+    sectionHeader(
+        $isDatabaseError ? 'Database Unavailable' : 'Section Unavailable',
+        $isDatabaseError ? 'MySQL is not accepting connections right now.' : 'This section could not be loaded.'
+    );
+    ?>
+    <section class="dashboard-card system-error-card" role="alert">
+        <div class="system-error-icon">
+            <i class="fa-solid <?= $isDatabaseError ? 'fa-database' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i>
+        </div>
+        <div>
+            <h2><?= $isDatabaseError ? 'Database connection refused' : 'Section failed to load' ?></h2>
+            <p><?= e($isDatabaseError ? databaseUnavailableMessage() : 'Please refresh this section. If it keeps happening, check the PHP error log for details.') ?></p>
+            <div class="system-error-actions">
+                <button class="button button-small" type="button" data-retry-section>
+                    <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Retry
+                </button>
+            </div>
+        </div>
+    </section>
+    <?php
+    exit;
+});
+
 function patientNameParts(array $patient): array
 {
     $first = (string) ($patient['first_name'] ?? '');
@@ -35,6 +61,7 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
     $hasHmo = ((string) ($patient['has_hmo'] ?? 'No')) === 'Yes';
     $idPrefix = $prefix === '' ? 'patient' : $prefix;
     $today = date('Y-m-d');
+    $photoUrl = patientPhotoUrl($patient, '../');
     ?>
     <input type="hidden" name="fullname" data-fullname-target value="<?= e($patient['fullname'] ?? '') ?>">
     <div class="tablet-tabs" data-tabs>
@@ -48,7 +75,7 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
         <div class="tab-panel active" data-tab-panel="personal">
             <div class="patient-photo-field">
                 <button class="patient-photo-preview" type="button" data-patient-photo-preview data-patient-photo-trigger aria-label="Upload patient photo">
-                    <?php if (!empty($patient['patient_photo'])): ?><img src="../<?= e($patient['patient_photo']) ?>" alt="<?= e($patient['fullname'] ?? 'Patient') ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
+                    <?php if ($photoUrl !== ''): ?><img src="<?= e($photoUrl) ?>" alt="<?= e($patient['fullname'] ?? 'Patient') ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
                     <span class="patient-photo-edit-icon"><i class="fa-solid fa-camera" aria-hidden="true"></i></span>
                 </button>
                 <div class="form-group">
@@ -201,7 +228,8 @@ if ($section === 'patients') {
                         <tr>
                             <td>
                                 <span class="patient-table-photo" aria-label="<?= e($patient['fullname']) ?> photo">
-                                    <?php if (!empty($patient['patient_photo'])): ?><img src="../<?= e($patient['patient_photo']) ?>" alt="<?= e($patient['fullname']) ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
+                                    <?php $patientPhoto = patientPhotoUrl($patient, '../'); ?>
+                                    <?php if ($patientPhoto !== ''): ?><img src="<?= e($patientPhoto) ?>" alt="<?= e($patient['fullname']) ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
                                 </span>
                             </td>
                             <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> &middot; <?= e($patient['gender']) ?></span></td>
@@ -217,7 +245,7 @@ if ($section === 'patients') {
         </div>
 
         <div class="inline-panel tablet-form-panel patient-form-page" id="patientCreatePanel" data-patient-form-view data-patient-modal-backdrop hidden>
-            <form class="admin-form ajax-form" data-action="create_patient" role="dialog" aria-modal="true" aria-labelledby="patientCreateTitle">
+            <form class="admin-form ajax-form" data-action="create_patient" role="dialog" aria-modal="true" aria-labelledby="patientCreateTitle" novalidate>
                 <div class="tablet-form-header">
                     <div><h3 id="patientCreateTitle">New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
                     <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-xmark"></i> Close</button>
@@ -229,7 +257,7 @@ if ($section === 'patients') {
         </div>
 
         <div class="inline-panel tablet-form-panel patient-form-page" id="patientEditPanel" data-patient-form-view data-patient-modal-backdrop hidden>
-            <form class="admin-form ajax-form" data-action="update_patient" role="dialog" aria-modal="true" aria-labelledby="patientEditTitle">
+            <form class="admin-form ajax-form" data-action="update_patient" role="dialog" aria-modal="true" aria-labelledby="patientEditTitle" novalidate>
                 <div class="tablet-form-header">
                     <div><h3 id="patientEditTitle">Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
                     <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-xmark"></i> Close</button>

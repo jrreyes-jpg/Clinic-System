@@ -225,6 +225,15 @@ dashboardHome?.addEventListener('click', () => {
     loadSection('dashboard');
 });
 
+content?.addEventListener('click', (event) => {
+    const retryButton = event.target.closest('[data-retry-section]');
+    if (!retryButton) {
+        return;
+    }
+
+    loadSection(activeSection);
+});
+
 async function postAction(formData) {
     const response = await fetch('actions.php', {
         method: 'POST',
@@ -371,11 +380,17 @@ content.addEventListener('change', (event) => {
     const hmoInput = event.target.closest && event.target.closest('[name="has_hmo"]');
     if (hmoInput) {
         updateHmoFields(hmoInput.closest('form'));
+        clearPatientValidation(hmoInput.closest('form'));
     }
 
     const patientPhotoInput = event.target.closest && event.target.closest('[data-patient-photo-input]');
     if (patientPhotoInput) {
         previewPatientPhoto(patientPhotoInput);
+    }
+
+    const patientField = event.target.closest && event.target.closest('[data-patient-form-view] input, [data-patient-form-view] textarea, [data-patient-form-view] select');
+    if (patientField) {
+        clearPatientFieldError(patientField.closest('form'), patientField);
     }
 });
 
@@ -412,6 +427,7 @@ content.addEventListener('click', async (event) => {
         const panel = document.querySelector('#patientCreatePanel');
         const form = panel?.querySelector('form');
         form?.reset();
+        clearPatientValidation(form);
         resetPatientPhotoPreview(form);
         resetPatientFormTabs(form);
         showPatientFormView(panel);
@@ -577,6 +593,11 @@ content.addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = ajaxForm.querySelector('button[type="submit"]');
     syncPatientFullname(ajaxForm);
+
+    if (['create_patient', 'update_patient'].includes(ajaxForm.dataset.action) && !validatePatientForm(ajaxForm)) {
+        return;
+    }
+
     const data = new FormData(ajaxForm);
     data.append('action', ajaxForm.dataset.action);
 
@@ -585,11 +606,17 @@ content.addEventListener('submit', async (event) => {
     }
 
     const result = await postAction(data);
-    alert(result.message);
 
     if (button) {
         button.disabled = false;
     }
+
+    if (!result.ok && result.errors && ['create_patient', 'update_patient'].includes(ajaxForm.dataset.action)) {
+        applyPatientValidationErrors(ajaxForm, result.errors);
+        return;
+    }
+
+    alert(result.message);
 
     if (result.ok) {
         if (result.logoUrl) {
@@ -606,6 +633,7 @@ content.addEventListener('submit', async (event) => {
 content.addEventListener('input', (event) => {
     const namePart = event.target.closest && event.target.closest('[data-name-part]');
     const birthdateInput = event.target.closest && event.target.closest('[data-birthdate]');
+    const patientField = event.target.closest && event.target.closest('[data-patient-form-view] input, [data-patient-form-view] textarea, [data-patient-form-view] select');
 
     if (namePart) {
         syncPatientFullname(namePart.closest('form'));
@@ -613,6 +641,10 @@ content.addEventListener('input', (event) => {
 
     if (birthdateInput) {
         updatePatientAge(birthdateInput.closest('form'));
+    }
+
+    if (patientField) {
+        clearPatientFieldError(patientField.closest('form'), patientField);
     }
 });
 
@@ -629,6 +661,166 @@ function activateFormTab(button) {
     tabs.querySelectorAll('[data-tab-panel]').forEach((panel) => {
         panel.classList.toggle('active', panel.dataset.tabPanel === target);
     });
+}
+
+function activatePatientTab(form, tabName) {
+    const button = form?.querySelector(`[data-tab-target="${tabName}"]`);
+    if (button) {
+        activateFormTab(button);
+    }
+}
+
+function clearPatientValidation(form) {
+    if (!form) {
+        return;
+    }
+
+    form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+    form.querySelectorAll('.form-group.has-error').forEach((group) => group.classList.remove('has-error'));
+    form.querySelectorAll('.field-error-message').forEach((message) => message.remove());
+    form.querySelectorAll('[data-tab-target].has-errors').forEach((button) => button.classList.remove('has-errors'));
+    form.querySelector('[data-validation-summary]')?.remove();
+}
+
+function clearPatientFieldError(form, field) {
+    if (!form || !field) {
+        return;
+    }
+
+    const group = field.closest('.form-group') || field.parentElement;
+    field.classList.remove('is-invalid');
+    group?.classList.remove('has-error');
+    group?.querySelector('.field-error-message')?.remove();
+
+    const tabName = fieldTabName(field);
+    const tabPanel = form.querySelector(`[data-tab-panel="${tabName}"]`);
+    const hasTabErrors = Boolean(tabPanel?.querySelector('.is-invalid'));
+    if (!hasTabErrors) {
+        form.querySelector(`[data-tab-target="${tabName}"]`)?.classList.remove('has-errors');
+    }
+
+    if (!form.querySelector('.is-invalid')) {
+        form.querySelector('[data-validation-summary]')?.remove();
+    }
+}
+
+function fieldTabName(field) {
+    return field?.closest('[data-tab-panel]')?.dataset.tabPanel || 'personal';
+}
+
+function patientFieldByName(form, name) {
+    return Array.from(form?.elements || []).find((field) => field.name === name) || null;
+}
+
+function fieldLabel(field) {
+    const label = field?.closest('.form-group')?.querySelector('label');
+    return label ? label.textContent.replace(/\s+/g, ' ').replace(/\s+i$/, '').trim() : field?.name || 'This field';
+}
+
+function setPatientFieldError(form, field, message) {
+    if (!form || !field) {
+        return;
+    }
+
+    const group = field.closest('.form-group') || field.parentElement;
+    field.classList.add('is-invalid');
+    group?.classList.add('has-error');
+
+    if (group && !group.querySelector('.field-error-message')) {
+        const error = document.createElement('small');
+        error.className = 'field-error-message';
+        error.textContent = message;
+        group.appendChild(error);
+    }
+
+    const tabName = fieldTabName(field);
+    form.querySelector(`[data-tab-target="${tabName}"]`)?.classList.add('has-errors');
+}
+
+function addPatientValidationSummary(form, count) {
+    const tabs = form?.querySelector('[data-tabs]');
+    if (!tabs || count <= 0) {
+        return;
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'validation-summary';
+    summary.dataset.validationSummary = 'true';
+    summary.setAttribute('role', 'alert');
+    summary.textContent = `${count} field${count === 1 ? '' : 's'} need attention. Complete the red field${count === 1 ? '' : 's'} before saving.`;
+    tabs.prepend(summary);
+}
+
+function applyPatientValidationErrors(form, errors) {
+    clearPatientValidation(form);
+
+    const entries = Object.entries(errors || {});
+    let firstField = null;
+
+    entries.forEach(([name, message]) => {
+        const field = patientFieldByName(form, name);
+        if (!field) {
+            return;
+        }
+
+        if (!firstField) {
+            firstField = field;
+        }
+
+        setPatientFieldError(form, field, String(message));
+    });
+
+    addPatientValidationSummary(form, entries.length);
+
+    if (firstField) {
+        activatePatientTab(form, fieldTabName(firstField));
+        window.setTimeout(() => {
+            firstField.focus({ preventScroll: true });
+            firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+    }
+}
+
+function validatePatientForm(form) {
+    clearPatientValidation(form);
+    syncPatientFullname(form);
+
+    const errors = {};
+    const requiredNames = ['first_name', 'last_name', 'birthdate', 'gender', 'contact_number'];
+    const hasHmo = form.querySelector('[name="has_hmo"]:checked')?.value === 'Yes';
+
+    if (hasHmo) {
+        requiredNames.push('hmo_provider', 'hmo_card_number', 'hmo_type', 'hmo_expiration_date');
+    }
+
+    requiredNames.forEach((name) => {
+        const field = patientFieldByName(form, name);
+        if (field && String(field.value || '').trim() === '') {
+            errors[name] = `${fieldLabel(field)} is required.`;
+        }
+    });
+
+    const email = form.querySelector('[name="email"]');
+    if (email?.value.trim() && !email.validity.valid) {
+        errors.email = 'Please enter a valid email address.';
+    }
+
+    const birthdate = form.querySelector('[name="birthdate"]');
+    if (birthdate?.value) {
+        const birth = new Date(`${birthdate.value}T00:00:00`);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (birth > today) {
+            errors.birthdate = 'Birthdate cannot be in the future.';
+        }
+    }
+
+    if (Object.keys(errors).length > 0) {
+        applyPatientValidationErrors(form, errors);
+        return false;
+    }
+
+    return true;
 }
 
 function syncPatientFullname(form) {
@@ -720,6 +912,19 @@ function setPatientPhotoPreview(preview, src = '', alt = 'Patient') {
     preview.appendChild(badge);
 }
 
+function patientPhotoSrc(path) {
+    const cleanPath = String(path || '').trim();
+    if (!cleanPath) {
+        return '';
+    }
+
+    if (/^(https?:)?\/\//i.test(cleanPath) || cleanPath.startsWith('data:') || cleanPath.startsWith('../')) {
+        return cleanPath;
+    }
+
+    return `../${cleanPath}`;
+}
+
 function resetPatientPhotoPreview(form) {
     setPatientPhotoPreview(form?.querySelector('[data-patient-photo-preview]'));
 }
@@ -792,6 +997,7 @@ function fillPatientForm(form, patient) {
         return;
     }
 
+    clearPatientValidation(form);
     form.querySelector('[name="id"]').value = patient.id || '';
     const fallbackNameParts = String(patient.fullname || '').trim().split(/\s+/).filter(Boolean);
     const fallbackFirstName = patient.first_name || fallbackNameParts.shift() || '';
@@ -833,8 +1039,9 @@ function fillPatientForm(form, patient) {
 
     const photoPreview = form.querySelector('[data-patient-photo-preview]');
     if (photoPreview) {
-        if (patient.patient_photo) {
-            setPatientPhotoPreview(photoPreview, `../${patient.patient_photo}`, patient.fullname || 'Patient');
+        const photoSrc = patientPhotoSrc(patient.patient_photo);
+        if (photoSrc) {
+            setPatientPhotoPreview(photoPreview, photoSrc, patient.fullname || 'Patient');
         } else {
             setPatientPhotoPreview(photoPreview);
         }
@@ -863,7 +1070,7 @@ function renderPatientProfile(patient) {
             <button class="button button-small button-light" type="button" data-profile-close>Close</button>
         </div>
         <div class="profile-card-grid">
-            <article><h3>Personal Information</h3>${patient.patient_photo ? `<img class="profile-patient-photo" src="../${escapeHtml(patient.patient_photo)}" alt="${escapeHtml(patient.fullname || 'Patient')}">` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
+            <article><h3>Personal Information</h3>${patientPhotoSrc(patient.patient_photo) ? `<img class="profile-patient-photo" src="${escapeHtml(patientPhotoSrc(patient.patient_photo))}" alt="${escapeHtml(patient.fullname || 'Patient')}">` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
             <article><h3>Contact Information</h3><p>${detailValue(patient.contact_number)}</p><p>${detailValue(patient.email)}</p><p>${detailValue(patient.address)}</p><p>Emergency: ${detailValue(patient.emergency_contact)} ${patient.emergency_contact_number ? `(${escapeHtml(patient.emergency_contact_number)})` : ''}</p></article>
             <article><h3>HMO Information</h3><p>${hasHmo ? 'With HMO' : 'No HMO'}</p><p>${detailValue(patient.hmo_provider)}</p><p>${detailValue(patient.hmo_card_number)}</p><p>${detailValue(patient.hmo_type)}</p></article>
             <article><h3>Medical Information</h3><p>Allergies: ${detailValue(patient.allergies)}</p><p>Conditions: ${detailValue(patient.medical_conditions)}</p><p>Medications: ${detailValue(patient.current_medications)}</p><p>Notes: ${detailValue(patient.medical_notes)}</p></article>

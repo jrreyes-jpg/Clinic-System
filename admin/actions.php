@@ -107,15 +107,13 @@ try {
         $lastName = trim((string) ($_POST['last_name'] ?? ''));
         $suffix = trim((string) ($_POST['suffix'] ?? ''));
         $fullNameParts = array_filter([$firstName, $middleName, $lastName, $suffix], static fn ($part) => $part !== '');
-        $patientPhoto = savePatientPhotoUpload();
-        $hmoCardFile = saveHmoCardUpload();
         $data = [
             'fullname' => trim((string) ($_POST['fullname'] ?? '')) ?: implode(' ', $fullNameParts),
             'first_name' => $firstName,
             'middle_name' => $middleName,
             'last_name' => $lastName,
             'suffix' => $suffix,
-            'patient_photo' => $patientPhoto,
+            'patient_photo' => '',
             'birthdate' => trim((string) ($_POST['birthdate'] ?? '')),
             'gender' => (string) ($_POST['gender'] ?? ''),
             'address' => trim((string) ($_POST['address'] ?? '')),
@@ -128,16 +126,19 @@ try {
             'hmo_card_number' => trim((string) ($_POST['hmo_card_number'] ?? '')),
             'hmo_type' => trim((string) ($_POST['hmo_type'] ?? '')),
             'hmo_expiration_date' => trim((string) ($_POST['hmo_expiration_date'] ?? '')) ?: null,
-            'hmo_card_file' => $hmoCardFile,
+            'hmo_card_file' => '',
             'allergies' => trim((string) ($_POST['allergies'] ?? '')),
             'medical_conditions' => trim((string) ($_POST['medical_conditions'] ?? '')),
             'current_medications' => trim((string) ($_POST['current_medications'] ?? '')),
             'medical_notes' => trim((string) ($_POST['medical_notes'] ?? '')),
         ];
-        $errors = validatePatientData($data);
+        $fieldErrors = validatePatientDataFields($data);
+        $errors = array_values($fieldErrors);
         if ($errors !== []) {
-            jsonResponse(false, implode(' ', $errors));
+            jsonResponse(false, implode(' ', $errors), ['errors' => $fieldErrors]);
         }
+        $data['patient_photo'] = savePatientPhotoUpload();
+        $data['hmo_card_file'] = saveHmoCardUpload();
         $patientId = createPatient($data);
         createNotification(null, 'new_patient', 'New patient registered: ' . $data['fullname'], ['patient_id' => $patientId]);
         createAuditLog((int) ($currentUser['id'] ?? null), 'created patient', ['patient_id' => $patientId, 'fullname' => $data['fullname']]);
@@ -158,15 +159,13 @@ try {
         $lastName = trim((string) ($_POST['last_name'] ?? ''));
         $suffix = trim((string) ($_POST['suffix'] ?? ''));
         $fullNameParts = array_filter([$firstName, $middleName, $lastName, $suffix], static fn ($part) => $part !== '');
-        $patientPhoto = savePatientPhotoUpload($patientId);
-        $hmoCardFile = saveHmoCardUpload($patientId);
         $data = [
             'fullname' => trim((string) ($_POST['fullname'] ?? '')) ?: implode(' ', $fullNameParts),
             'first_name' => $firstName,
             'middle_name' => $middleName,
             'last_name' => $lastName,
             'suffix' => $suffix,
-            'patient_photo' => $patientPhoto,
+            'patient_photo' => '',
             'birthdate' => trim((string) ($_POST['birthdate'] ?? '')),
             'gender' => (string) ($_POST['gender'] ?? ''),
             'address' => trim((string) ($_POST['address'] ?? '')),
@@ -179,16 +178,21 @@ try {
             'hmo_card_number' => trim((string) ($_POST['hmo_card_number'] ?? '')),
             'hmo_type' => trim((string) ($_POST['hmo_type'] ?? '')),
             'hmo_expiration_date' => trim((string) ($_POST['hmo_expiration_date'] ?? '')) ?: null,
-            'hmo_card_file' => $hmoCardFile,
+            'hmo_card_file' => '',
             'allergies' => trim((string) ($_POST['allergies'] ?? '')),
             'medical_conditions' => trim((string) ($_POST['medical_conditions'] ?? '')),
             'current_medications' => trim((string) ($_POST['current_medications'] ?? '')),
             'medical_notes' => trim((string) ($_POST['medical_notes'] ?? '')),
         ];
-        $errors = validatePatientData($data);
+        $fieldErrors = validatePatientDataFields($data);
+        $errors = array_values($fieldErrors);
         if ($patientId <= 0 || $errors !== []) {
-            jsonResponse(false, $errors === [] ? 'Invalid patient record.' : implode(' ', $errors));
+            jsonResponse(false, $errors === [] ? 'Invalid patient record.' : implode(' ', $errors), ['errors' => $fieldErrors]);
         }
+        $hmoCardFile = saveHmoCardUpload($patientId);
+        $patientPhoto = savePatientPhotoUpload($patientId);
+        $data['hmo_card_file'] = $hmoCardFile;
+        $data['patient_photo'] = $patientPhoto;
         if ($hmoCardFile === '') {
             unset($data['hmo_card_file']);
         }
@@ -445,7 +449,8 @@ try {
         ]);
     }
 } catch (PDOException $exception) {
-    jsonResponse(false, 'Database action failed. Please check duplicate records or required data.');
+    http_response_code(503);
+    jsonResponse(false, databaseUnavailableMessage());
 }
 
 jsonResponse(false, 'Unknown action.');

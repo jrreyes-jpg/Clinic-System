@@ -11,6 +11,11 @@ const DB_USER = 'root';
 const DB_PASS = '';
 const DB_CHARSET = 'utf8mb4';
 
+function databaseUnavailableMessage(): string
+{
+    return 'Database connection failed. Start MySQL in XAMPP, then check DB_HOST, DB_NAME, DB_USER, and DB_PASS in config/database.php.';
+}
+
 function getDatabaseConnection(): PDO
 {
     static $pdo = null;
