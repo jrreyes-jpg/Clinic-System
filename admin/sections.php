@@ -85,6 +85,16 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
                         <button class="button button-small button-light" type="button" data-patient-photo-trigger><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload Photo</button>
                         <button class="button button-small button-light" type="button" data-camera-start><i class="fa-solid fa-camera" aria-hidden="true"></i> Take Photo</button>
                     </div>
+                    <div class="patient-cropper" data-patient-cropper hidden>
+                        <div class="patient-crop-stage" data-patient-crop-stage>
+                            <img alt="Patient crop preview" data-patient-crop-image>
+                            <span class="patient-crop-mask" aria-hidden="true"></span>
+                        </div>
+                        <div class="patient-crop-controls">
+                            <label>Zoom</label>
+                            <input type="range" min="1" max="3" step="0.01" value="1" data-patient-crop-zoom>
+                        </div>
+                    </div>
                     <div class="patient-camera" data-patient-camera hidden>
                         <video data-patient-camera-video playsinline autoplay muted></video>
                         <canvas data-patient-camera-canvas hidden></canvas>

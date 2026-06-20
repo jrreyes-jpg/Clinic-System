@@ -15,6 +15,7 @@ const avatarCropStage = document.querySelector('[data-avatar-crop-stage]');
 const avatarCropImage = document.querySelector('[data-avatar-crop-image]');
 const avatarCropZoom = document.querySelector('[data-avatar-crop-zoom]');
 let patientCameraStream = null;
+const patientCropStates = new WeakMap();
 
 const avatarCrop = {
     file: null,
@@ -146,6 +147,24 @@ function clearAvatarCrop() {
     if (avatarCropImage) avatarCropImage.removeAttribute('src');
     if (avatarCropZoom) avatarCropZoom.value = '1';
     if (photoInput) photoInput.value = '';
+}
+
+function createCropState(file = null) {
+    return {
+        file,
+        url: '',
+        naturalWidth: 0,
+        naturalHeight: 0,
+        baseScale: 1,
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        startOffsetX: 0,
+        startOffsetY: 0,
+    };
 }
 
 const validDashboardSections = ['dashboard', 'patients', 'appointments', 'billing', 'services', 'records', 'users', 'reports', 'settings'];
@@ -392,6 +411,16 @@ content.addEventListener('change', (event) => {
     if (patientField) {
         clearPatientFieldError(patientField.closest('form'), patientField);
     }
+
+    const patientCropZoom = event.target.closest && event.target.closest('[data-patient-crop-zoom]');
+    if (patientCropZoom) {
+        const form = patientCropZoom.closest('form');
+        const state = patientCropStates.get(form);
+        if (state) {
+            state.zoom = Number(patientCropZoom.value) || 1;
+            renderPatientCrop(form);
+        }
+    }
 });
 
 content.addEventListener('click', async (event) => {
@@ -428,6 +457,7 @@ content.addEventListener('click', async (event) => {
         const form = panel?.querySelector('form');
         form?.reset();
         clearPatientValidation(form);
+        clearPatientCrop(form, false);
         resetPatientPhotoPreview(form);
         resetPatientFormTabs(form);
         showPatientFormView(panel);
@@ -435,19 +465,25 @@ content.addEventListener('click', async (event) => {
     }
 
     if (patientBackButton) {
-        stopPatientCamera(patientBackButton.closest('form'));
+        const form = patientBackButton.closest('form');
+        stopPatientCamera(form);
+        clearPatientCrop(form, false);
         showPatientListView();
         return;
     }
 
     if (patientModalBackdrop) {
-        stopPatientCamera(patientModalBackdrop.querySelector('form'));
+        const form = patientModalBackdrop.querySelector('form');
+        stopPatientCamera(form);
+        clearPatientCrop(form, false);
         showPatientListView();
         return;
     }
 
     if (panelCloseButton) {
-        stopPatientCamera(panelCloseButton.closest('form'));
+        const form = panelCloseButton.closest('form');
+        stopPatientCamera(form);
+        clearPatientCrop(form, false);
         const panel = panelCloseButton.closest('.tablet-form-panel');
         if (panel) panel.hidden = true;
         return;
@@ -601,6 +637,14 @@ content.addEventListener('submit', async (event) => {
     const data = new FormData(ajaxForm);
     data.append('action', ajaxForm.dataset.action);
 
+    if (['create_patient', 'update_patient'].includes(ajaxForm.dataset.action)) {
+        const croppedPatientPhoto = await buildCroppedPatientPhotoBlob(ajaxForm);
+        if (croppedPatientPhoto) {
+            data.delete('patient_photo_upload');
+            data.append('patient_photo_upload', croppedPatientPhoto, `patient-photo-${Date.now()}.jpg`);
+        }
+    }
+
     if (button) {
         button.disabled = true;
     }
@@ -645,6 +689,62 @@ content.addEventListener('input', (event) => {
 
     if (patientField) {
         clearPatientFieldError(patientField.closest('form'), patientField);
+    }
+});
+
+content.addEventListener('pointerdown', (event) => {
+    const stage = event.target.closest && event.target.closest('[data-patient-crop-stage]');
+    const form = stage?.closest('form');
+    const state = patientCropStates.get(form);
+
+    if (!stage || !state?.file) {
+        return;
+    }
+
+    state.dragging = true;
+    state.startX = event.clientX;
+    state.startY = event.clientY;
+    state.startOffsetX = state.offsetX;
+    state.startOffsetY = state.offsetY;
+    stage.setPointerCapture(event.pointerId);
+});
+
+content.addEventListener('pointermove', (event) => {
+    const stage = event.target.closest && event.target.closest('[data-patient-crop-stage]');
+    const form = stage?.closest('form');
+    const state = patientCropStates.get(form);
+
+    if (!stage || !state?.dragging) {
+        return;
+    }
+
+    state.offsetX = state.startOffsetX + event.clientX - state.startX;
+    state.offsetY = state.startOffsetY + event.clientY - state.startY;
+    renderPatientCrop(form);
+});
+
+content.addEventListener('pointerup', (event) => {
+    const stage = event.target.closest && event.target.closest('[data-patient-crop-stage]');
+    const form = stage?.closest('form');
+    const state = patientCropStates.get(form);
+
+    if (!stage || !state) {
+        return;
+    }
+
+    state.dragging = false;
+    if (stage.hasPointerCapture(event.pointerId)) {
+        stage.releasePointerCapture(event.pointerId);
+    }
+});
+
+content.addEventListener('pointercancel', (event) => {
+    const stage = event.target.closest && event.target.closest('[data-patient-crop-stage]');
+    const form = stage?.closest('form');
+    const state = patientCropStates.get(form);
+
+    if (state) {
+        state.dragging = false;
     }
 });
 
@@ -881,11 +981,7 @@ function previewPatientPhoto(input) {
         return;
     }
 
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-        setPatientPhotoPreview(preview, String(reader.result), 'Patient preview');
-    });
-    reader.readAsDataURL(file);
+    startPatientPhotoCrop(form, file);
 }
 
 function setPatientPhotoPreview(preview, src = '', alt = 'Patient') {
@@ -923,6 +1019,175 @@ function patientPhotoSrc(path) {
     }
 
     return `../${cleanPath}`;
+}
+
+function patientCropElements(form) {
+    return {
+        cropper: form?.querySelector('[data-patient-cropper]'),
+        stage: form?.querySelector('[data-patient-crop-stage]'),
+        image: form?.querySelector('[data-patient-crop-image]'),
+        zoom: form?.querySelector('[data-patient-crop-zoom]'),
+        preview: form?.querySelector('[data-patient-photo-preview]'),
+    };
+}
+
+function clearPatientCrop(form, clearInput = true) {
+    if (!form) {
+        return;
+    }
+
+    const state = patientCropStates.get(form);
+    if (state?.url) {
+        URL.revokeObjectURL(state.url);
+    }
+
+    patientCropStates.delete(form);
+
+    const { cropper, image, zoom, preview } = patientCropElements(form);
+    if (cropper) cropper.hidden = true;
+    if (image) image.removeAttribute('src');
+    if (zoom) zoom.value = '1';
+    preview?.querySelector('[data-patient-crop-preview-image]')?.remove();
+
+    if (clearInput) {
+        const input = form.querySelector('[data-patient-photo-input]');
+        if (input) input.value = '';
+    }
+}
+
+function clampPatientCrop(form) {
+    const state = patientCropStates.get(form);
+    const { stage } = patientCropElements(form);
+
+    if (!state || !stage) {
+        return;
+    }
+
+    const size = stage.getBoundingClientRect().width;
+    const scale = state.baseScale * state.zoom;
+    const scaledWidth = state.naturalWidth * scale;
+    const scaledHeight = state.naturalHeight * scale;
+    const maxX = Math.max(0, (scaledWidth - size) / 2);
+    const maxY = Math.max(0, (scaledHeight - size) / 2);
+
+    state.offsetX = Math.min(maxX, Math.max(-maxX, state.offsetX));
+    state.offsetY = Math.min(maxY, Math.max(-maxY, state.offsetY));
+}
+
+function renderPatientCropPreview(form) {
+    const state = patientCropStates.get(form);
+    const { stage, preview } = patientCropElements(form);
+    const image = preview?.querySelector('[data-patient-crop-preview-image]');
+
+    if (!state || !stage || !preview || !image) {
+        return;
+    }
+
+    const previewSize = preview.getBoundingClientRect().width;
+    const stageSize = stage.getBoundingClientRect().width;
+    const previewRatio = previewSize / stageSize;
+    const scale = state.baseScale * state.zoom * previewRatio;
+
+    image.style.position = 'absolute';
+    image.style.left = '50%';
+    image.style.top = '50%';
+    image.style.width = `${state.naturalWidth * scale}px`;
+    image.style.height = `${state.naturalHeight * scale}px`;
+    image.style.objectFit = 'initial';
+    image.style.transform = `translate(-50%, -50%) translate(${state.offsetX * previewRatio}px, ${state.offsetY * previewRatio}px)`;
+}
+
+function renderPatientCrop(form) {
+    const state = patientCropStates.get(form);
+    const { image } = patientCropElements(form);
+
+    if (!state || !image) {
+        return;
+    }
+
+    clampPatientCrop(form);
+    const scale = state.baseScale * state.zoom;
+    image.style.width = `${state.naturalWidth * scale}px`;
+    image.style.height = `${state.naturalHeight * scale}px`;
+    image.style.transform = `translate(-50%, -50%) translate(${state.offsetX}px, ${state.offsetY}px)`;
+    renderPatientCropPreview(form);
+}
+
+function resetPatientCropPosition(form) {
+    const state = patientCropStates.get(form);
+    const { stage, zoom } = patientCropElements(form);
+
+    if (!state || !stage) {
+        return;
+    }
+
+    const size = stage.getBoundingClientRect().width;
+    state.baseScale = size / Math.min(state.naturalWidth, state.naturalHeight);
+    state.zoom = 1;
+    state.offsetX = 0;
+    state.offsetY = 0;
+
+    if (zoom) zoom.value = '1';
+    renderPatientCrop(form);
+}
+
+function startPatientPhotoCrop(form, file) {
+    const { cropper, image, preview } = patientCropElements(form);
+
+    if (!form || !file || !cropper || !image || !preview) {
+        return;
+    }
+
+    clearPatientCrop(form, false);
+
+    const state = createCropState(file);
+    state.url = URL.createObjectURL(file);
+    patientCropStates.set(form, state);
+
+    image.addEventListener('load', () => {
+        state.naturalWidth = image.naturalWidth;
+        state.naturalHeight = image.naturalHeight;
+        cropper.hidden = false;
+        resetPatientCropPosition(form);
+    }, { once: true });
+
+    setPatientPhotoPreview(preview, state.url, 'Patient preview');
+    const previewImage = preview.querySelector('img');
+    if (previewImage) {
+        previewImage.dataset.patientCropPreviewImage = 'true';
+    }
+
+    image.src = state.url;
+}
+
+function buildCroppedPatientPhotoBlob(form) {
+    const state = patientCropStates.get(form);
+    const { stage, image } = patientCropElements(form);
+
+    if (!state?.file || !stage || !image || !state.naturalWidth || !state.naturalHeight) {
+        return Promise.resolve(null);
+    }
+
+    const canvas = document.createElement('canvas');
+    const outputSize = 512;
+    const stageSize = stage.getBoundingClientRect().width;
+    const ratio = outputSize / stageSize;
+    const scale = state.baseScale * state.zoom;
+    const drawWidth = state.naturalWidth * scale * ratio;
+    const drawHeight = state.naturalHeight * scale * ratio;
+    const drawX = (outputSize / 2) - (drawWidth / 2) + (state.offsetX * ratio);
+    const drawY = (outputSize / 2) - (drawHeight / 2) + (state.offsetY * ratio);
+    const context = canvas.getContext('2d');
+
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    context.fillStyle = '#f3f4f6';
+    context.fillRect(0, 0, outputSize, outputSize);
+    context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+    return new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.92);
+    });
 }
 
 function resetPatientPhotoPreview(form) {
@@ -965,7 +1230,9 @@ function showPatientListView() {
     }
 
     workspace.querySelectorAll('[data-patient-form-view]').forEach((panel) => {
-        stopPatientCamera(panel.querySelector('form'));
+        const form = panel.querySelector('form');
+        stopPatientCamera(form);
+        clearPatientCrop(form, false);
         panel.hidden = true;
     });
     document.body.classList.remove('patient-modal-open');
@@ -981,7 +1248,9 @@ function showPatientFormView(panel) {
 
     workspace.querySelectorAll('[data-patient-form-view]').forEach((item) => {
         if (item !== panel) {
-            stopPatientCamera(item.querySelector('form'));
+            const form = item.querySelector('form');
+            stopPatientCamera(form);
+            clearPatientCrop(form, false);
             item.hidden = true;
         }
     });

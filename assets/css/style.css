@@ -2599,6 +2599,72 @@ body.patient-modal-open {
     background: #fffbea;
 }
 
+.patient-cropper {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) minmax(160px, 1fr);
+    align-items: center;
+    gap: 14px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f9fafb;
+}
+
+.patient-cropper[hidden] {
+    display: none;
+}
+
+.patient-crop-stage {
+    position: relative;
+    width: min(220px, 100%);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #f3f4f6;
+    touch-action: none;
+    cursor: grab;
+}
+
+.patient-crop-stage:active {
+    cursor: grabbing;
+}
+
+.patient-crop-stage img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    max-width: none;
+    user-select: none;
+    pointer-events: none;
+    transform-origin: center center;
+}
+
+.patient-crop-mask {
+    position: absolute;
+    inset: 0;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 999px rgba(17, 17, 17, 0.28), inset 0 0 0 1px rgba(17, 17, 17, 0.12);
+    pointer-events: none;
+}
+
+.patient-crop-controls {
+    display: grid;
+    gap: 8px;
+}
+
+.patient-crop-controls label {
+    color: #1f2937;
+    font-weight: 900;
+}
+
+.patient-crop-controls input[type="range"] {
+    min-height: auto;
+    padding: 0;
+}
+
 .patient-photo-preview {
     position: relative;
     display: grid;
