@@ -239,7 +239,7 @@ if ($section === 'patients') {
                         ?>
                         <tr>
                             <td>
-                                <button class="patient-table-photo" type="button" data-view-patient='<?= e(json_encode($patient)) ?>' aria-label="View <?= e($patient['fullname']) ?> profile">
+                                <button class="patient-table-photo" type="button" data-edit-patient-photo='<?= e(json_encode($patient)) ?>' aria-label="Edit <?= e($patient['fullname']) ?> photo">
                                     <?php $patientPhoto = patientPhotoUrl($patient, '../'); ?>
                                     <?php if ($patientPhoto !== ''): ?><img src="<?= e($patientPhoto) ?>" alt="<?= e($patient['fullname']) ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
                                 </button>

@@ -453,7 +453,7 @@ content.addEventListener('click', async (event) => {
     const viewButton = event.target.closest('[data-view-patient]');
     const editButton = event.target.closest('[data-edit-patient]');
     const scheduleButton = event.target.closest('[data-schedule-patient]');
-    const patientPhotoViewButton = event.target.closest('[data-patient-photo-view]');
+    const patientPhotoEditButton = event.target.closest('[data-edit-patient-photo]');
     const editAppointmentButton = event.target.closest('[data-edit-appointment]');
     const tabButton = event.target.closest('[data-tab-target]');
     const panelCloseButton = event.target.closest('[data-panel-close]');
@@ -462,6 +462,8 @@ content.addEventListener('click', async (event) => {
     const cameraCloseButton = event.target.closest('[data-camera-close]');
     const patientPhotoTrigger = event.target.closest('[data-patient-photo-trigger]');
     const patientPhotoRemoveButton = event.target.closest('[data-patient-photo-remove]');
+    const patientPhotoEditorClose = event.target.closest('[data-patient-photo-editor-close]');
+    const patientPhotoEditorBackdrop = event.target.matches('[data-patient-photo-editor]') ? event.target : null;
     const patientModalBackdrop = event.target.matches('[data-patient-modal-backdrop]') ? event.target : null;
 
     if (sectionButton) {
@@ -501,6 +503,11 @@ content.addEventListener('click', async (event) => {
         return;
     }
 
+    if (patientPhotoEditorClose || patientPhotoEditorBackdrop) {
+        closePatientPhotoEditor();
+        return;
+    }
+
     if (panelCloseButton) {
         const form = panelCloseButton.closest('form');
         stopPatientCamera(form);
@@ -520,11 +527,20 @@ content.addEventListener('click', async (event) => {
         const removeInput = form?.querySelector('[data-patient-photo-remove-input]');
         const fileInput = form?.querySelector('[data-patient-photo-input]');
 
+        if (!confirm('Remove this patient photo?')) {
+            return;
+        }
+
         if (removeInput) removeInput.value = '1';
         if (fileInput) fileInput.value = '';
         stopPatientCamera(form);
         clearPatientCrop(form, false);
         resetPatientPhotoPreview(form);
+
+        if (form?.dataset.action === 'update_patient_photo') {
+            form.requestSubmit();
+        }
+
         return;
     }
 
@@ -568,8 +584,9 @@ content.addEventListener('click', async (event) => {
         if (result.ok) loadSection('patients');
     }
 
-    if (patientPhotoViewButton) {
-        openPatientPhotoViewer(patientPhotoViewButton.dataset.patientPhotoView, patientPhotoViewButton.dataset.patientPhotoName || 'Patient photo');
+    if (patientPhotoEditButton) {
+        const patient = JSON.parse(patientPhotoEditButton.dataset.editPatientPhoto);
+        openPatientPhotoEditor(patient);
         return;
     }
 
@@ -669,6 +686,8 @@ content.addEventListener('submit', async (event) => {
     const button = ajaxForm.querySelector('button[type="submit"]');
     syncPatientFullname(ajaxForm);
 
+    const patientPhotoActions = ['create_patient', 'update_patient', 'update_patient_photo'];
+
     if (['create_patient', 'update_patient'].includes(ajaxForm.dataset.action) && !validatePatientForm(ajaxForm)) {
         return;
     }
@@ -676,7 +695,7 @@ content.addEventListener('submit', async (event) => {
     const data = new FormData(ajaxForm);
     data.append('action', ajaxForm.dataset.action);
 
-    if (['create_patient', 'update_patient'].includes(ajaxForm.dataset.action)) {
+    if (patientPhotoActions.includes(ajaxForm.dataset.action)) {
         const croppedPatientPhoto = await buildCroppedPatientPhotoBlob(ajaxForm);
         if (croppedPatientPhoto) {
             data.delete('patient_photo_upload');
@@ -1018,6 +1037,18 @@ function previewPatientPhoto(input) {
     const removeInput = form?.querySelector('[data-patient-photo-remove-input]');
 
     if (!file || !preview) {
+        return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        alert('Patient photo must be a JPG, PNG, or WEBP image.');
+        input.value = '';
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Patient photo must be 5MB or smaller.');
+        input.value = '';
         return;
     }
 
@@ -1373,31 +1404,81 @@ function patientDataAttr(patient) {
     return escapeHtml(JSON.stringify(patient));
 }
 
-function openPatientPhotoViewer(src, name = 'Patient photo') {
-    const photoSrc = patientPhotoSrc(src);
+function renderPatientPhotoEditor(patient, photoSrc) {
+    return `
+        <form class="patient-profile-photo-form ajax-form" data-action="update_patient_photo" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="${escapeHtml(window.dashboardConfig?.csrfToken || '')}">
+            <input type="hidden" name="id" value="${escapeHtml(patient.id || '')}">
+            <input type="hidden" name="remove_patient_photo" value="0" data-patient-photo-remove-input>
+            <div class="patient-photo-field patient-photo-field-compact">
+                <button class="patient-photo-preview patient-photo-preview-large" type="button" data-patient-photo-preview data-patient-photo-trigger aria-label="Change patient photo">
+                    ${photoSrc ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(patient.fullname || 'Patient')}">` : '<i class="fa-solid fa-user" aria-hidden="true"></i>'}
+                    <span class="patient-photo-edit-icon"><i class="fa-solid fa-camera" aria-hidden="true"></i></span>
+                </button>
+                <div class="patient-photo-profile-actions">
+                    <input class="patient-photo-input" type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                    <button class="button button-small button-light" type="button" data-patient-photo-trigger><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload</button>
+                    <button class="button button-small button-light" type="button" data-camera-start><i class="fa-solid fa-camera" aria-hidden="true"></i> Take Photo</button>
+                    <button class="button button-small button-light" type="button" data-patient-photo-remove><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove</button>
+                    <button class="button button-small" type="submit">Save Photo</button>
+                </div>
+            </div>
+            <div class="patient-cropper" data-patient-cropper hidden>
+                <div class="patient-crop-stage" data-patient-crop-stage>
+                    <img alt="Patient crop preview" data-patient-crop-image>
+                    <span class="patient-crop-mask" aria-hidden="true"></span>
+                </div>
+                <div class="patient-crop-controls">
+                    <label>Zoom</label>
+                    <input type="range" min="1" max="3" step="0.01" value="1" data-patient-crop-zoom>
+                </div>
+            </div>
+            <div class="patient-camera" data-patient-camera hidden>
+                <video data-patient-camera-video playsinline autoplay muted></video>
+                <canvas data-patient-camera-canvas hidden></canvas>
+                <div class="patient-camera-actions">
+                    <button class="button button-small" type="button" data-camera-capture>Capture</button>
+                    <button class="button button-small button-light" type="button" data-camera-close>Close Camera</button>
+                </div>
+            </div>
+        </form>
+    `;
+}
 
-    if (!photoSrc) {
+function closePatientPhotoEditor() {
+    const editor = document.querySelector('[data-patient-photo-editor]');
+    if (!editor) {
         return;
     }
 
-    let viewer = document.querySelector('[data-patient-photo-viewer]');
-    if (!viewer) {
-        viewer = document.createElement('div');
-        viewer.className = 'patient-photo-viewer';
-        viewer.dataset.patientPhotoViewer = 'true';
-        viewer.innerHTML = `
-            <div class="patient-photo-viewer-dialog" role="dialog" aria-modal="true" aria-label="Patient photo preview">
-                <button class="icon-button patient-photo-viewer-close" type="button" data-patient-photo-viewer-close aria-label="Close photo preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                <img alt="">
-            </div>
-        `;
-        document.body.appendChild(viewer);
-    }
+    stopPatientCamera(editor.querySelector('form'));
+    clearPatientCrop(editor.querySelector('form'), false);
+    editor.remove();
+}
 
-    const image = viewer.querySelector('img');
-    image.src = photoSrc;
-    image.alt = name;
-    viewer.hidden = false;
+function openPatientPhotoEditor(patient) {
+    closePatientPhotoEditor();
+
+    const photoSrc = patientPhotoSrc(patient.patient_photo);
+    const editor = document.createElement('div');
+    editor.className = 'patient-photo-editor';
+    editor.dataset.patientPhotoEditor = 'true';
+    editor.innerHTML = `
+        <section class="patient-photo-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="patientPhotoEditorTitle">
+            <div class="patient-photo-editor-header">
+                <div>
+                    <p class="eyebrow">Patient Photo</p>
+                    <h2 id="patientPhotoEditorTitle">${escapeHtml(patient.fullname || 'Patient')}</h2>
+                </div>
+                <button class="icon-button" type="button" data-patient-photo-editor-close aria-label="Close patient photo editor">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+            ${renderPatientPhotoEditor(patient, photoSrc)}
+        </section>
+    `;
+
+    content.appendChild(editor);
 }
 
 function renderPatientProfile(patient) {
@@ -1419,7 +1500,7 @@ function renderPatientProfile(patient) {
             </div>
         </div>
         <div class="profile-card-grid">
-            <article><h3>Personal Information</h3>${photoSrc ? `<button class="profile-patient-photo-button" type="button" data-patient-photo-view="${escapeHtml(photoSrc)}" data-patient-photo-name="${escapeHtml(patient.fullname || 'Patient')}"><img class="profile-patient-photo" src="${escapeHtml(photoSrc)}" alt="${escapeHtml(patient.fullname || 'Patient')}"></button>` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
+            <article><h3>Personal Information</h3>${photoSrc ? `<button class="profile-patient-photo-button" type="button" data-edit-patient-photo='${patientDataAttr(patient)}'><img class="profile-patient-photo" src="${escapeHtml(photoSrc)}" alt="${escapeHtml(patient.fullname || 'Patient')}"></button>` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
             <article><h3>Contact Information</h3><p>${detailValue(patient.contact_number)}</p><p>${detailValue(patient.email)}</p><p>${detailValue(patient.address)}</p><p>Emergency: ${detailValue(patient.emergency_contact)} ${patient.emergency_contact_number ? `(${escapeHtml(patient.emergency_contact_number)})` : ''}</p></article>
             <article><h3>HMO Information</h3><p>${hasHmo ? 'With HMO' : 'No HMO'}</p><p>${detailValue(patient.hmo_provider)}</p><p>${detailValue(patient.hmo_card_number)}</p><p>${detailValue(patient.hmo_type)}</p></article>
             <article><h3>Medical Information</h3><p>Allergies: ${detailValue(patient.allergies)}</p><p>Conditions: ${detailValue(patient.medical_conditions)}</p><p>Medications: ${detailValue(patient.current_medications)}</p><p>Notes: ${detailValue(patient.medical_notes)}</p></article>
@@ -1431,22 +1512,9 @@ function renderPatientProfile(patient) {
 }
 
 content.addEventListener('click', (event) => {
-    const viewer = event.target.closest('[data-patient-photo-viewer]');
-    if (event.target.closest('[data-patient-photo-viewer-close]') || event.target === viewer) {
-        if (viewer) viewer.hidden = true;
-        return;
-    }
-
     if (event.target.closest('[data-profile-close]')) {
         const panel = document.querySelector('[data-patient-profile]');
         if (panel) panel.hidden = true;
-    }
-});
-
-document.addEventListener('click', (event) => {
-    const viewer = event.target.closest('[data-patient-photo-viewer]');
-    if (event.target.closest('[data-patient-photo-viewer-close]') || event.target === viewer) {
-        if (viewer) viewer.hidden = true;
     }
 });
 

@@ -72,6 +72,10 @@ function savePatientPhotoUpload(int $patientId = 0): string
         jsonResponse(false, 'Patient photo upload failed. Please choose another image.');
     }
 
+    if ((int) ($_FILES['patient_photo_upload']['size'] ?? 0) > 5 * 1024 * 1024) {
+        jsonResponse(false, 'Patient photo must be 5MB or smaller.');
+    }
+
     $tmpPath = (string) $_FILES['patient_photo_upload']['tmp_name'];
     $imageInfo = getimagesize($tmpPath);
     $allowedTypes = [
@@ -150,6 +154,27 @@ try {
         archivePatient($pid);
         createAuditLog((int) ($currentUser['id'] ?? null), 'archived patient', ['patient_id' => $pid]);
         jsonResponse(true, 'Patient archived successfully.');
+    }
+
+    if ($action === 'update_patient_photo') {
+        $patientId = (int) ($_POST['id'] ?? 0);
+        if ($patientId <= 0) {
+            jsonResponse(false, 'Invalid patient record.');
+        }
+
+        $patientPhoto = savePatientPhotoUpload($patientId);
+        $removePhoto = (string) ($_POST['remove_patient_photo'] ?? '0') === '1';
+
+        if ($patientPhoto === '' && !$removePhoto) {
+            jsonResponse(false, 'Please upload or take a patient photo first.');
+        }
+
+        updatePatientPhoto($patientId, $removePhoto ? '' : $patientPhoto);
+        createAuditLog((int) ($currentUser['id'] ?? null), $removePhoto ? 'removed patient photo' : 'updated patient photo', ['patient_id' => $patientId]);
+        jsonResponse(true, $removePhoto ? 'Patient photo removed successfully.' : 'Patient photo updated successfully.', [
+            'patient_photo' => $removePhoto ? '' : $patientPhoto,
+            'patientPhotoUrl' => $removePhoto ? '' : patientPhotoUrl(['patient_photo' => $patientPhoto], '../'),
+        ]);
     }
 
     if ($action === 'update_patient') {

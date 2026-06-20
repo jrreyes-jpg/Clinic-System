@@ -780,6 +780,20 @@ function updatePatient(int $patientId, array $data): void
     $statement->execute($parameters);
 }
 
+function updatePatientPhoto(int $patientId, string $patientPhoto): void
+{
+    if (!columnExists('patients', 'patient_photo')) {
+        return;
+    }
+
+    $pdo = getDatabaseConnection();
+    $statement = $pdo->prepare('UPDATE patients SET patient_photo = :patient_photo WHERE id = :id');
+    $statement->execute([
+        'patient_photo' => $patientPhoto,
+        'id' => $patientId,
+    ]);
+}
+
 function listServices(string $search = ''): array
 {
     if (!tableExists('services')) {
