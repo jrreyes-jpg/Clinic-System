@@ -770,9 +770,9 @@ function updatePatient(int $patientId, array $data): void
     ];
 
     foreach ($optionalColumns as $column) {
-        if (columnExists('patients', $column)) {
+        if (columnExists('patients', $column) && array_key_exists($column, $data)) {
             $sets[] = $column . ' = :' . $column;
-            $parameters[$column] = $data[$column] ?? null;
+            $parameters[$column] = $data[$column];
         }
     }
 

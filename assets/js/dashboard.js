@@ -128,6 +128,24 @@ function buildCroppedAvatarBlob() {
     });
 }
 
+function openProfileModal() {
+    if (!profileModal) {
+        return;
+    }
+
+    profileModal.hidden = false;
+    profileModal.scrollTop = 0;
+
+    const dialog = profileModal.querySelector('.profile-modal');
+    if (dialog) {
+        dialog.scrollTop = 0;
+    }
+
+    window.requestAnimationFrame(() => {
+        profileForm?.querySelector('#profile_fullname')?.focus();
+    });
+}
+
 function clearAvatarCrop() {
     const photoInput = profileForm?.querySelector('input[name="profile_photo"]');
 
@@ -362,7 +380,8 @@ document.addEventListener('click', (event) => {
 
     if (modalOpenButton) {
         if (profileDropdown) profileDropdown.hidden = true;
-        if (profileModal) profileModal.hidden = false;
+        profileToggle?.setAttribute('aria-expanded', 'false');
+        openProfileModal();
         return;
     }
 
@@ -434,6 +453,7 @@ content.addEventListener('click', async (event) => {
     const viewButton = event.target.closest('[data-view-patient]');
     const editButton = event.target.closest('[data-edit-patient]');
     const scheduleButton = event.target.closest('[data-schedule-patient]');
+    const patientPhotoViewButton = event.target.closest('[data-patient-photo-view]');
     const editAppointmentButton = event.target.closest('[data-edit-appointment]');
     const tabButton = event.target.closest('[data-tab-target]');
     const panelCloseButton = event.target.closest('[data-panel-close]');
@@ -441,6 +461,7 @@ content.addEventListener('click', async (event) => {
     const cameraCaptureButton = event.target.closest('[data-camera-capture]');
     const cameraCloseButton = event.target.closest('[data-camera-close]');
     const patientPhotoTrigger = event.target.closest('[data-patient-photo-trigger]');
+    const patientPhotoRemoveButton = event.target.closest('[data-patient-photo-remove]');
     const patientModalBackdrop = event.target.matches('[data-patient-modal-backdrop]') ? event.target : null;
 
     if (sectionButton) {
@@ -494,6 +515,19 @@ content.addEventListener('click', async (event) => {
         return;
     }
 
+    if (patientPhotoRemoveButton) {
+        const form = patientPhotoRemoveButton.closest('form');
+        const removeInput = form?.querySelector('[data-patient-photo-remove-input]');
+        const fileInput = form?.querySelector('[data-patient-photo-input]');
+
+        if (removeInput) removeInput.value = '1';
+        if (fileInput) fileInput.value = '';
+        stopPatientCamera(form);
+        clearPatientCrop(form, false);
+        resetPatientPhotoPreview(form);
+        return;
+    }
+
     if (toggleButton) {
         const panel = document.querySelector(`#${toggleButton.dataset.togglePanel}`);
         if (panel) {
@@ -532,6 +566,11 @@ content.addEventListener('click', async (event) => {
         const result = await postAction(data);
         alert(result.message);
         if (result.ok) loadSection('patients');
+    }
+
+    if (patientPhotoViewButton) {
+        openPatientPhotoViewer(patientPhotoViewButton.dataset.patientPhotoView, patientPhotoViewButton.dataset.patientPhotoName || 'Patient photo');
+        return;
     }
 
     if (completeButton) {
@@ -976,11 +1015,13 @@ function previewPatientPhoto(input) {
     const file = input.files?.[0];
     const form = input.closest('form');
     const preview = form?.querySelector('[data-patient-photo-preview]');
+    const removeInput = form?.querySelector('[data-patient-photo-remove-input]');
 
     if (!file || !preview) {
         return;
     }
 
+    if (removeInput) removeInput.value = '0';
     startPatientPhotoCrop(form, file);
 }
 
@@ -1268,6 +1309,9 @@ function fillPatientForm(form, patient) {
 
     clearPatientValidation(form);
     form.querySelector('[name="id"]').value = patient.id || '';
+    const removePhotoInput = form.querySelector('[data-patient-photo-remove-input]');
+    if (removePhotoInput) removePhotoInput.value = '0';
+
     const fallbackNameParts = String(patient.fullname || '').trim().split(/\s+/).filter(Boolean);
     const fallbackFirstName = patient.first_name || fallbackNameParts.shift() || '';
     const fallbackLastName = patient.last_name || fallbackNameParts.join(' ');
@@ -1325,6 +1369,37 @@ function detailValue(value) {
     return value ? escapeHtml(value) : '<span class="muted">Not recorded</span>';
 }
 
+function patientDataAttr(patient) {
+    return escapeHtml(JSON.stringify(patient));
+}
+
+function openPatientPhotoViewer(src, name = 'Patient photo') {
+    const photoSrc = patientPhotoSrc(src);
+
+    if (!photoSrc) {
+        return;
+    }
+
+    let viewer = document.querySelector('[data-patient-photo-viewer]');
+    if (!viewer) {
+        viewer = document.createElement('div');
+        viewer.className = 'patient-photo-viewer';
+        viewer.dataset.patientPhotoViewer = 'true';
+        viewer.innerHTML = `
+            <div class="patient-photo-viewer-dialog" role="dialog" aria-modal="true" aria-label="Patient photo preview">
+                <button class="icon-button patient-photo-viewer-close" type="button" data-patient-photo-viewer-close aria-label="Close photo preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                <img alt="">
+            </div>
+        `;
+        document.body.appendChild(viewer);
+    }
+
+    const image = viewer.querySelector('img');
+    image.src = photoSrc;
+    image.alt = name;
+    viewer.hidden = false;
+}
+
 function renderPatientProfile(patient) {
     const panel = document.querySelector('[data-patient-profile]');
     if (!panel) {
@@ -1332,14 +1407,19 @@ function renderPatientProfile(patient) {
     }
 
     const hasHmo = (patient.has_hmo || 'No') === 'Yes';
+    const photoSrc = patientPhotoSrc(patient.patient_photo);
     panel.hidden = false;
     panel.innerHTML = `
         <div class="card-header">
             <div><h2>${escapeHtml(patient.fullname || 'Patient Profile')}</h2><p class="muted">${escapeHtml(patient.patient_no || '')}</p></div>
-            <button class="button button-small button-light" type="button" data-profile-close>Close</button>
+            <div class="row-actions">
+                <button class="button button-small" type="button" data-edit-patient='${patientDataAttr(patient)}'>Edit</button>
+                <button class="button button-small button-danger" type="button" data-archive-patient="${escapeHtml(patient.id || '')}">Archive</button>
+                <button class="button button-small button-light" type="button" data-profile-close>Close</button>
+            </div>
         </div>
         <div class="profile-card-grid">
-            <article><h3>Personal Information</h3>${patientPhotoSrc(patient.patient_photo) ? `<img class="profile-patient-photo" src="${escapeHtml(patientPhotoSrc(patient.patient_photo))}" alt="${escapeHtml(patient.fullname || 'Patient')}">` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
+            <article><h3>Personal Information</h3>${photoSrc ? `<button class="profile-patient-photo-button" type="button" data-patient-photo-view="${escapeHtml(photoSrc)}" data-patient-photo-name="${escapeHtml(patient.fullname || 'Patient')}"><img class="profile-patient-photo" src="${escapeHtml(photoSrc)}" alt="${escapeHtml(patient.fullname || 'Patient')}"></button>` : ''}<p>Age: ${detailValue(patient.age)}</p><p>Sex: ${detailValue(patient.gender)}</p><p>Birthdate: ${detailValue(patient.birthdate)}</p></article>
             <article><h3>Contact Information</h3><p>${detailValue(patient.contact_number)}</p><p>${detailValue(patient.email)}</p><p>${detailValue(patient.address)}</p><p>Emergency: ${detailValue(patient.emergency_contact)} ${patient.emergency_contact_number ? `(${escapeHtml(patient.emergency_contact_number)})` : ''}</p></article>
             <article><h3>HMO Information</h3><p>${hasHmo ? 'With HMO' : 'No HMO'}</p><p>${detailValue(patient.hmo_provider)}</p><p>${detailValue(patient.hmo_card_number)}</p><p>${detailValue(patient.hmo_type)}</p></article>
             <article><h3>Medical Information</h3><p>Allergies: ${detailValue(patient.allergies)}</p><p>Conditions: ${detailValue(patient.medical_conditions)}</p><p>Medications: ${detailValue(patient.current_medications)}</p><p>Notes: ${detailValue(patient.medical_notes)}</p></article>
@@ -1351,9 +1431,22 @@ function renderPatientProfile(patient) {
 }
 
 content.addEventListener('click', (event) => {
+    const viewer = event.target.closest('[data-patient-photo-viewer]');
+    if (event.target.closest('[data-patient-photo-viewer-close]') || event.target === viewer) {
+        if (viewer) viewer.hidden = true;
+        return;
+    }
+
     if (event.target.closest('[data-profile-close]')) {
         const panel = document.querySelector('[data-patient-profile]');
         if (panel) panel.hidden = true;
+    }
+});
+
+document.addEventListener('click', (event) => {
+    const viewer = event.target.closest('[data-patient-photo-viewer]');
+    if (event.target.closest('[data-patient-photo-viewer-close]') || event.target === viewer) {
+        if (viewer) viewer.hidden = true;
     }
 });
 

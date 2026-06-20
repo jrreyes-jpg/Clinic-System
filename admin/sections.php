@@ -81,9 +81,11 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
                 <div class="form-group">
                     <label>Patient Photo <span class="field-info" data-tip="Upload a patient photo or use tablet camera when available.">i</span></label>
                     <div class="patient-photo-actions">
+                        <input type="hidden" name="remove_patient_photo" value="0" data-patient-photo-remove-input>
                         <input class="patient-photo-input" type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
                         <button class="button button-small button-light" type="button" data-patient-photo-trigger><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload Photo</button>
                         <button class="button button-small button-light" type="button" data-camera-start><i class="fa-solid fa-camera" aria-hidden="true"></i> Take Photo</button>
+                        <button class="button button-small button-light" type="button" data-patient-photo-remove><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove Photo</button>
                     </div>
                     <div class="patient-cropper" data-patient-cropper hidden>
                         <div class="patient-crop-stage" data-patient-crop-stage>
@@ -237,16 +239,16 @@ if ($section === 'patients') {
                         ?>
                         <tr>
                             <td>
-                                <span class="patient-table-photo" aria-label="<?= e($patient['fullname']) ?> photo">
+                                <button class="patient-table-photo" type="button" data-view-patient='<?= e(json_encode($patient)) ?>' aria-label="View <?= e($patient['fullname']) ?> profile">
                                     <?php $patientPhoto = patientPhotoUrl($patient, '../'); ?>
                                     <?php if ($patientPhoto !== ''): ?><img src="<?= e($patientPhoto) ?>" alt="<?= e($patient['fullname']) ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
-                                </span>
+                                </button>
                             </td>
                             <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> &middot; <?= e($patient['gender']) ?></span></td>
                             <td><?= e($patient['contact_number']) ?></td>
                             <td><span class="status-badge <?= $hasHmo ? 'status-completed' : 'status-pending' ?>"><?= $hasHmo ? 'With HMO' : 'No HMO' ?></span></td>
                             <td><?= e((string) $patient['no_show_count']) ?></td>
-                            <td><div class="row-actions"><button class="button button-small button-light" type="button" data-view-patient='<?= e(json_encode($patient)) ?>'>View</button><button class="button button-small" type="button" data-edit-patient='<?= e(json_encode($patient)) ?>'>Edit</button><button class="button button-small button-secondary" type="button" data-schedule-patient='<?= e(json_encode($patient)) ?>'>Schedule</button></div></td>
+                            <td><div class="row-actions"><button class="button button-small button-light" type="button" data-view-patient='<?= e(json_encode($patient)) ?>'>View</button><button class="button button-small" type="button" data-edit-patient='<?= e(json_encode($patient)) ?>'>Edit</button><button class="button button-small button-secondary" type="button" data-schedule-patient='<?= e(json_encode($patient)) ?>'>Schedule</button><button class="button button-small button-danger" type="button" data-archive-patient="<?= e((string) $patient['id']) ?>">Archive</button></div></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

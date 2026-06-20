@@ -196,7 +196,9 @@ try {
         if ($hmoCardFile === '') {
             unset($data['hmo_card_file']);
         }
-        if ($patientPhoto === '') {
+        if ($patientPhoto === '' && (string) ($_POST['remove_patient_photo'] ?? '0') === '1') {
+            $data['patient_photo'] = '';
+        } elseif ($patientPhoto === '') {
             unset($data['patient_photo']);
         }
         updatePatient($patientId, $data);
