@@ -47,13 +47,15 @@ function renderPatientTabletForm(array $patient = [], string $prefix = ''): void
 
         <div class="tab-panel active" data-tab-panel="personal">
             <div class="patient-photo-field">
-                <span class="patient-photo-preview" data-patient-photo-preview>
+                <button class="patient-photo-preview" type="button" data-patient-photo-preview data-patient-photo-trigger aria-label="Upload patient photo">
                     <?php if (!empty($patient['patient_photo'])): ?><img src="../<?= e($patient['patient_photo']) ?>" alt="<?= e($patient['fullname'] ?? 'Patient') ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
-                </span>
+                    <span class="patient-photo-edit-icon"><i class="fa-solid fa-camera" aria-hidden="true"></i></span>
+                </button>
                 <div class="form-group">
                     <label>Patient Photo <span class="field-info" data-tip="Upload a patient photo or use tablet camera when available.">i</span></label>
                     <div class="patient-photo-actions">
-                        <input type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                        <input class="patient-photo-input" type="file" name="patient_photo_upload" accept="image/jpeg,image/png,image/webp" capture="environment" data-patient-photo-input>
+                        <button class="button button-small button-light" type="button" data-patient-photo-trigger><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload Photo</button>
                         <button class="button button-small button-light" type="button" data-camera-start><i class="fa-solid fa-camera" aria-hidden="true"></i> Take Photo</button>
                     </div>
                     <div class="patient-camera" data-patient-camera hidden>
@@ -175,7 +177,7 @@ if ($section === 'patients') {
         </div>
 
         <form class="search-bar spa-search patient-filter-bar" data-section-search="patients">
-            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search ID, name, contact, or email">
+            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search name, contact, or email">
             <select name="hmo">
                 <option value="">All HMO</option>
                 <option value="Yes" <?= $hmoFilter === 'Yes' ? 'selected' : '' ?>>With HMO</option>
@@ -188,7 +190,7 @@ if ($section === 'patients') {
 
         <div class="table-wrap">
             <table class="compact-table tablet-table">
-                <thead><tr><th>Patient ID</th><th>Name</th><th>Contact Number</th><th>HMO Status</th><th>No Show Count</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Photo</th><th>Name</th><th>Contact Number</th><th>HMO Status</th><th>No Show Count</th><th>Actions</th></tr></thead>
                 <tbody>
                     <?php if ($patients === []): ?><tr><td colspan="6">No patient records found.</td></tr><?php endif; ?>
                     <?php foreach ($patients as $patient): ?>
@@ -197,7 +199,11 @@ if ($section === 'patients') {
                         $patient['no_show_count'] = countPatientNoShows((int) $patient['id']);
                         ?>
                         <tr>
-                            <td><?= e($patient['patient_no']) ?></td>
+                            <td>
+                                <span class="patient-table-photo" aria-label="<?= e($patient['fullname']) ?> photo">
+                                    <?php if (!empty($patient['patient_photo'])): ?><img src="../<?= e($patient['patient_photo']) ?>" alt="<?= e($patient['fullname']) ?>"><?php else: ?><i class="fa-solid fa-user" aria-hidden="true"></i><?php endif; ?>
+                                </span>
+                            </td>
                             <td><strong><?= e($patient['fullname']) ?></strong><br><span class="muted"><?= e((string) $patient['age']) ?> &middot; <?= e($patient['gender']) ?></span></td>
                             <td><?= e($patient['contact_number']) ?></td>
                             <td><span class="status-badge <?= $hasHmo ? 'status-completed' : 'status-pending' ?>"><?= $hasHmo ? 'With HMO' : 'No HMO' ?></span></td>
@@ -210,11 +216,11 @@ if ($section === 'patients') {
         </div>
         </div>
 
-        <div class="inline-panel tablet-form-panel patient-form-page" id="patientCreatePanel" data-patient-form-view hidden>
-            <form class="admin-form ajax-form" data-action="create_patient">
+        <div class="inline-panel tablet-form-panel patient-form-page" id="patientCreatePanel" data-patient-form-view data-patient-modal-backdrop hidden>
+            <form class="admin-form ajax-form" data-action="create_patient" role="dialog" aria-modal="true" aria-labelledby="patientCreateTitle">
                 <div class="tablet-form-header">
-                    <div><h3>New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
-                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-arrow-left"></i> Back to Patients</button>
+                    <div><h3 id="patientCreateTitle">New Patient</h3><p class="muted">Complete each tab, then save.</p></div>
+                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-xmark"></i> Close</button>
                 </div>
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <?php renderPatientTabletForm(); ?>
@@ -222,11 +228,11 @@ if ($section === 'patients') {
             </form>
         </div>
 
-        <div class="inline-panel tablet-form-panel patient-form-page" id="patientEditPanel" data-patient-form-view hidden>
-            <form class="admin-form ajax-form" data-action="update_patient">
+        <div class="inline-panel tablet-form-panel patient-form-page" id="patientEditPanel" data-patient-form-view data-patient-modal-backdrop hidden>
+            <form class="admin-form ajax-form" data-action="update_patient" role="dialog" aria-modal="true" aria-labelledby="patientEditTitle">
                 <div class="tablet-form-header">
-                    <div><h3>Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
-                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-arrow-left"></i> Back to Patients</button>
+                    <div><h3 id="patientEditTitle">Edit Patient</h3><p class="muted">Update only the details that changed.</p></div>
+                    <button class="button button-small button-light touch-button" type="button" data-patient-back><i class="fa-solid fa-xmark"></i> Close</button>
                 </div>
                 <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                 <input type="hidden" name="id" id="editPatientId">

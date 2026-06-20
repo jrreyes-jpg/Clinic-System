@@ -1403,13 +1403,11 @@ th {
     display: grid;
     gap: 18px;
     opacity: 1;
-    transform: translateY(0);
-    transition: opacity 180ms ease, transform 180ms ease;
+    transition: opacity 180ms ease;
 }
 
 .spa-content.is-loading {
     opacity: 0.55;
-    transform: translateY(6px);
 }
 
 .section-loader {
@@ -1832,6 +1830,13 @@ th {
     box-shadow: 0 24px 56px rgba(94, 86, 18, 0.13);
 }
 
+.patient-workspace.dashboard-card:hover,
+body.patient-modal-open .dashboard-card:hover,
+body.patient-modal-open .dashboard-stat-card:hover {
+    transform: none;
+    box-shadow: 0 18px 44px rgba(94, 86, 18, 0.08);
+}
+
 .dashboard-stat-card {
     display: flex;
     align-items: center;
@@ -2206,20 +2211,28 @@ th {
     gap: 10px;
 }
 
+body.patient-modal-open {
+    overflow: hidden;
+}
+
 .tablet-form-panel {
     box-sizing: border-box;
-    position: static;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
     width: 100%;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    padding: 0;
+    height: 100%;
+    min-height: 100vh;
+    padding: 24px;
+    place-items: center;
     border: 0;
     border-radius: 0;
-    background: transparent;
+    background: rgba(17, 24, 39, 0.62);
     box-shadow: none;
-    overflow: visible;
+    overflow: hidden;
     transform: none;
+    isolation: isolate;
 }
 
 .tablet-form-panel[hidden] {
@@ -2227,17 +2240,53 @@ th {
 }
 
 .tablet-form-panel .admin-form {
+    position: relative;
+    z-index: 1;
     display: grid;
-    grid-template-rows: auto auto auto;
-    gap: 14px;
-    height: auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0;
+    width: clamp(700px, 72vw, 900px);
+    max-width: calc(100vw - 48px);
+    height: min(720px, 85vh);
+    max-height: 85vh;
     min-height: 0;
-    max-height: none;
     padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    border: 1px solid rgba(231, 220, 53, 0.5);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(17, 24, 39, 0.38);
+    overflow: hidden;
+    transform: translateZ(0);
+}
+
+.tablet-form-panel .button {
+    gap: 8px;
+}
+
+.tablet-form-panel *,
+.tablet-form-panel *::before,
+.tablet-form-panel *::after {
+    box-sizing: border-box;
+}
+
+.patient-table-photo {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid rgba(231, 220, 53, 0.72);
+    border-radius: 50%;
+    color: #6f6200;
+    background: #f3f4f6;
+    font-size: 1.1rem;
+}
+
+.patient-table-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
 }
 
 .tablet-form-header {
@@ -2246,13 +2295,32 @@ th {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    padding: 2px 0 12px;
-    border-bottom: 1px solid rgba(238, 228, 120, 0.58);
+    padding: 18px 24px;
+    border-bottom: 1px solid #eef0f4;
+    color: #111827;
+    background: #ffffff;
 }
 
 .tablet-form-header h3 {
     margin: 0;
-    font-size: 1.12rem;
+    font-size: 1.2rem;
+    color: #111827;
+}
+
+.tablet-form-header .muted {
+    color: #6b7280;
+}
+
+.tablet-form-header .button-light {
+    border-color: #e5e7eb;
+    color: #374151;
+    background: #f9fafb;
+}
+
+.tablet-form-header .button-light:hover {
+    border-color: rgba(239, 68, 68, 0.85);
+    color: #991b1b;
+    background: #fef2f2;
 }
 
 .tablet-tabs {
@@ -2261,7 +2329,12 @@ th {
     gap: 14px;
     align-content: start;
     min-height: 0;
-    overflow: visible;
+    max-width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px 24px;
+    overscroll-behavior: contain;
+    background: #f8fafc;
 }
 
 .tab-strip {
@@ -2269,16 +2342,17 @@ th {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     padding: 6px;
-    border-radius: 16px;
-    background: #f4f6f8;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #eef1f5;
 }
 
 .tab-strip button {
     position: relative;
     min-height: 48px;
     border: 0;
-    border-radius: 12px;
-    color: #3d3700;
+    border-radius: 8px;
+    color: #374151;
     background: transparent;
     font: inherit;
     font-weight: 900;
@@ -2287,8 +2361,8 @@ th {
 
 .tab-strip button.active {
     color: #111111;
-    background: #ffffff;
-    box-shadow: 0 10px 22px rgba(94, 86, 18, 0.1);
+    background: #e7dc35;
+    box-shadow: 0 10px 22px rgba(94, 86, 18, 0.14);
 }
 
 .tab-panel {
@@ -2296,7 +2370,8 @@ th {
 }
 
 .tab-panel.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow: visible;
     padding: 2px 0 4px;
@@ -2305,8 +2380,16 @@ th {
 
 .tablet-form-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.tablet-form-grid > *,
+.tablet-tabs > *,
+.tab-panel > * {
+    min-width: 0;
 }
 
 .tablet-form-grid .form-group-wide {
@@ -2320,8 +2403,31 @@ th {
 .patient-filter-bar select,
 .appointment-toolbar input,
 .appointment-toolbar select {
-    min-height: 48px;
+    width: 100%;
+    max-width: 100%;
+    min-height: 50px;
+    border-color: #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
     font-size: 1rem;
+}
+
+.tablet-form-panel .form-group {
+    gap: 7px;
+}
+
+.tablet-form-panel .form-group label {
+    color: #1f2937;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.tablet-form-grid input:focus,
+.tablet-form-grid select:focus,
+.tablet-form-grid textarea:focus {
+    border-color: #b9ae16;
+    box-shadow: 0 0 0 3px rgba(231, 220, 53, 0.18);
+    outline: 0;
 }
 
 .form-group:has([required]) > label::after {
@@ -2375,39 +2481,92 @@ th {
     transform: translate(-50%, 0);
 }
 
+.tablet-form-panel .field-info {
+    display: none;
+}
+
 .patient-photo-field {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 14px;
-    margin-bottom: 10px;
-    padding: 10px;
-    border: 1px dashed rgba(169, 148, 0, 0.28);
-    border-radius: 16px;
+    gap: 18px;
+    margin-bottom: 18px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
     background: #ffffff;
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.04);
 }
 
 .patient-photo-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
 }
 
 .patient-photo-actions .button {
     width: fit-content;
+    min-height: 44px;
+    border-color: #d1d5db;
+    border-radius: 10px;
+    color: #111827;
+    background: #f9fafb;
+    font-weight: 800;
+}
+
+.patient-photo-actions .button:hover {
+    border-color: #e7dc35;
+    background: #fffbea;
 }
 
 .patient-photo-preview {
+    position: relative;
     display: grid;
     width: 86px;
     height: 86px;
     place-items: center;
     overflow: hidden;
+    padding: 0;
+    border: 2px solid #e7dc35;
     border-radius: 50%;
     color: #6f6200;
-    background: #f3f4f6;
+    background: #f9fafb;
     font-size: 1.7rem;
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.patient-photo-preview:hover,
+.patient-photo-preview:focus-visible {
+    border-color: #111111;
+    box-shadow: 0 12px 28px rgba(17, 17, 17, 0.16);
+    outline: 0;
+    transform: translateY(-1px);
+}
+
+.patient-photo-edit-icon {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    color: #111111;
+    background: #e7dc35;
+    font-size: 0.82rem;
+}
+
+.patient-photo-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
 }
 
 .patient-photo-preview img,
@@ -2493,9 +2652,10 @@ th {
 
 .segmented-field label:has(input:checked),
 .segmented-control label:has(input:checked) {
-    border-color: #e7dc35;
-    background: #fff7b8;
-    box-shadow: inset 0 0 0 2px rgba(231, 220, 53, 0.65);
+    border-color: #111827;
+    color: #111827;
+    background: #e7dc35;
+    box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.12);
 }
 
 .segmented-field label:hover,
@@ -2507,9 +2667,23 @@ th {
     display: flex;
     justify-content: flex-end;
     margin-top: 0;
-    padding-top: 10px;
-    border-top: 1px solid rgba(238, 228, 120, 0.58);
-    background: #fffef7;
+    padding: 16px 24px;
+    border-top: 1px solid #eef0f4;
+    background: #ffffff;
+}
+
+.form-actions .button {
+    min-width: 150px;
+    border-radius: 10px;
+    color: #111111;
+    background: #e7dc35;
+    box-shadow: 0 10px 22px rgba(231, 220, 53, 0.2);
+    font-weight: 900;
+}
+
+.form-actions .button:hover {
+    background: #f5d739;
+    box-shadow: 0 12px 26px rgba(231, 220, 53, 0.26);
 }
 
 .tablet-table th,
@@ -2665,6 +2839,16 @@ th {
     .tablet-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .tablet-form-panel {
+        padding: 22px;
+    }
+
+    .tablet-form-panel .admin-form {
+        width: min(820px, calc(100vw - 44px));
+        max-height: 85vh;
+        min-height: 0;
+    }
 }
 
 @media (max-width: 640px) {
@@ -2708,6 +2892,21 @@ th {
     .profile-card-grid,
     .tablet-list-row {
         grid-template-columns: 1fr;
+    }
+
+    .tablet-form-panel {
+        padding: 14px;
+    }
+
+    .tablet-form-panel .admin-form {
+        width: calc(100vw - 28px);
+        max-height: 85vh;
+    }
+
+    .tablet-form-header,
+    .form-actions,
+    .tablet-tabs {
+        padding-inline: 14px;
     }
 
     .patient-photo-field {

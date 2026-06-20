@@ -174,6 +174,7 @@ updateSidebarToggleLabel();
 
 async function loadSection(section, params = {}) {
     stopPatientCamera();
+    document.body.classList.remove('patient-modal-open');
     activeSection = section;
     if (!params || Object.keys(params).length === 0) {
         const url = new URL(window.location.href);
@@ -395,6 +396,8 @@ content.addEventListener('click', async (event) => {
     const cameraStartButton = event.target.closest('[data-camera-start]');
     const cameraCaptureButton = event.target.closest('[data-camera-capture]');
     const cameraCloseButton = event.target.closest('[data-camera-close]');
+    const patientPhotoTrigger = event.target.closest('[data-patient-photo-trigger]');
+    const patientModalBackdrop = event.target.matches('[data-patient-modal-backdrop]') ? event.target : null;
 
     if (sectionButton) {
         loadSection(sectionButton.dataset.section);
@@ -407,7 +410,10 @@ content.addEventListener('click', async (event) => {
 
     if (patientCreateButton) {
         const panel = document.querySelector('#patientCreatePanel');
-        panel?.querySelector('form')?.reset();
+        const form = panel?.querySelector('form');
+        form?.reset();
+        resetPatientPhotoPreview(form);
+        resetPatientFormTabs(form);
         showPatientFormView(panel);
         return;
     }
@@ -418,10 +424,21 @@ content.addEventListener('click', async (event) => {
         return;
     }
 
+    if (patientModalBackdrop) {
+        stopPatientCamera(patientModalBackdrop.querySelector('form'));
+        showPatientListView();
+        return;
+    }
+
     if (panelCloseButton) {
         stopPatientCamera(panelCloseButton.closest('form'));
         const panel = panelCloseButton.closest('.tablet-form-panel');
         if (panel) panel.hidden = true;
+        return;
+    }
+
+    if (patientPhotoTrigger) {
+        patientPhotoTrigger.closest('form')?.querySelector('[data-patient-photo-input]')?.click();
         return;
     }
 
@@ -674,13 +691,51 @@ function previewPatientPhoto(input) {
 
     const reader = new FileReader();
     reader.addEventListener('load', () => {
-        preview.textContent = '';
-        const image = document.createElement('img');
-        image.src = String(reader.result);
-        image.alt = 'Patient preview';
-        preview.appendChild(image);
+        setPatientPhotoPreview(preview, String(reader.result), 'Patient preview');
     });
     reader.readAsDataURL(file);
+}
+
+function setPatientPhotoPreview(preview, src = '', alt = 'Patient') {
+    if (!preview) {
+        return;
+    }
+
+    preview.textContent = '';
+    if (src) {
+        const image = document.createElement('img');
+        image.src = src;
+        image.alt = alt;
+        preview.appendChild(image);
+    } else {
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-user';
+        icon.setAttribute('aria-hidden', 'true');
+        preview.appendChild(icon);
+    }
+
+    const badge = document.createElement('span');
+    badge.className = 'patient-photo-edit-icon';
+    badge.innerHTML = '<i class="fa-solid fa-camera" aria-hidden="true"></i>';
+    preview.appendChild(badge);
+}
+
+function resetPatientPhotoPreview(form) {
+    setPatientPhotoPreview(form?.querySelector('[data-patient-photo-preview]'));
+}
+
+function resetPatientFormTabs(form) {
+    const tabs = form?.querySelector('[data-tabs]');
+    if (!tabs) {
+        return;
+    }
+
+    tabs.querySelectorAll('[data-tab-target]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tabTarget === 'personal');
+    });
+    tabs.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.tabPanel === 'personal');
+    });
 }
 
 function updateHmoFields(form) {
@@ -708,13 +763,12 @@ function showPatientListView() {
         stopPatientCamera(panel.querySelector('form'));
         panel.hidden = true;
     });
+    document.body.classList.remove('patient-modal-open');
     listView.hidden = false;
-    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showPatientFormView(panel) {
     const workspace = document.querySelector('[data-patient-workspace]');
-    const listView = workspace?.querySelector('[data-patient-list-view]');
 
     if (!workspace || !panel) {
         return;
@@ -727,14 +781,10 @@ function showPatientFormView(panel) {
         }
     });
 
-    if (listView) {
-        listView.hidden = true;
-    }
-
+    document.body.classList.add('patient-modal-open');
     panel.hidden = false;
     panel.querySelector('[data-birthdate]') && updatePatientAge(panel.querySelector('form'));
     panel.querySelector('[name="has_hmo"]') && updateHmoFields(panel.querySelector('form'));
-    workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function fillPatientForm(form, patient) {
@@ -783,17 +833,10 @@ function fillPatientForm(form, patient) {
 
     const photoPreview = form.querySelector('[data-patient-photo-preview]');
     if (photoPreview) {
-        photoPreview.textContent = '';
         if (patient.patient_photo) {
-            const image = document.createElement('img');
-            image.src = `../${patient.patient_photo}`;
-            image.alt = patient.fullname || 'Patient';
-            photoPreview.appendChild(image);
+            setPatientPhotoPreview(photoPreview, `../${patient.patient_photo}`, patient.fullname || 'Patient');
         } else {
-            const icon = document.createElement('i');
-            icon.className = 'fa-solid fa-user';
-            icon.setAttribute('aria-hidden', 'true');
-            photoPreview.appendChild(icon);
+            setPatientPhotoPreview(photoPreview);
         }
     }
 
@@ -1183,6 +1226,15 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const patientModal = document.querySelector('[data-patient-form-view]:not([hidden])');
+        if (patientModal) {
+            stopPatientCamera(patientModal.querySelector('form'));
+            showPatientListView();
+            return;
+        }
+    }
+
     if (event.key === 'Escape' && notificationsDropdown && !notificationsDropdown.hidden) {
         notificationsDropdown.hidden = true;
         notificationsToggle?.setAttribute('aria-expanded', 'false');
